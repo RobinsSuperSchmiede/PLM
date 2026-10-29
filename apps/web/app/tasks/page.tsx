@@ -1,105 +1,183 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
-import { Check, Circle, CircleDashed, ListFilter, Plus, Search, Trash2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CalendarClock, CheckSquare2, Pencil, Plus } from 'lucide-react';
 
+import { ANY, FilterBar, useIncremental } from '@/components/filter-bar';
+import { useI18n } from '@/components/i18n-provider';
+import { EntityTags } from '@/components/knowledge';
+import { OpenFromQuery, useClearQueryId } from '@/components/open-from-query';
+import { TaskDialog, priorityKeys, statusKeys } from '@/components/task-dialog';
 import { Button } from '@/components/ui/button';
-import { PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DeleteButton, EmptyState, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import type { TaskPriority, TaskStatus, WorkspaceTask } from '@/lib/workspace-data';
+import { colorOf } from '@/lib/appearance';
+import { addDays, relativeDay, toDateKey, todayKey } from '@/lib/dates';
+import { priorityColors, statusColors } from '@/lib/colors';
+import type { Task, TaskPriority, TaskStatus } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-const statusNames: Record<TaskStatus, string> = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
+type Sort = 'due' | 'priority' | 'created' | 'updated' | 'title';
+const priorityRank: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 };
+const NO_PROJECT = '__none__';
 
 export default function TasksPage() {
-  const { data, updateData, loading } = useWorkspace();
+  const { t, language } = useI18n();
+  const { data, loading, update, remove, tags, tagAssignments } = useWorkspace();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | TaskStatus>('all');
-  const [adding, setAdding] = useState(false);
-  const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState<TaskPriority>('medium');
+  const [status, setStatus] = useState<string>(ANY);
+  const [priority, setPriority] = useState<string>(ANY);
+  const [project, setProject] = useState<string>(ANY);
+  const [tag, setTag] = useState<string>(ANY);
+  const [due, setDue] = useState<string>(ANY);
+  const [sort, setSort] = useState<Sort>('due');
+  const [editing, setEditing] = useState<Task | 'new' | null>(null);
+  const clearQuery = useClearQueryId();
 
-  const visibleTasks = useMemo(() => data.tasks.filter((task) =>
-    (filter === 'all' || task.status === filter) && task.title.toLowerCase().includes(query.toLowerCase()),
-  ), [data.tasks, filter, query]);
+  const projects = useMemo(() => new Map(data.projects.map((item) => [item.id, item])), [data.projects]);
+  const today = todayKey();
 
-  function addTask(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    const task: WorkspaceTask = { id: `task-${Date.now()}`, title: trimmed, status: 'todo', priority, due: 'No date' };
-    updateData((current) => ({ ...current, tasks: [task, ...current.tasks] }));
-    setTitle('');
-    setAdding(false);
-  }
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const weekEnd = toDateKey(addDays(new Date(), 7));
+    const tagged = tag !== ANY ? new Set(tagAssignments.filter((entry) => entry.tag_id === tag && entry.entity_type === 'task').map((entry) => entry.entity_id)) : null;
+    return data.tasks
+      .filter((task) => status === ANY || (status === 'open' ? task.status !== 'done' : task.status === status))
+      .filter((task) => priority === ANY || task.priority === priority)
+      .filter((task) => project === ANY || (project === NO_PROJECT ? !task.project_id : task.project_id === project))
+      .filter((task) => !tagged || tagged.has(task.id))
+      .filter((task) => {
+        if (due === ANY) return true;
+        if (due === 'none') return !task.due_date;
+        if (!task.due_date) return false;
+        if (due === 'overdue') return task.status !== 'done' && task.due_date < today;
+        if (due === 'today') return task.due_date === today;
+        if (due === 'week') return task.due_date >= today && task.due_date <= weekEnd;
+        return task.due_date > weekEnd;
+      })
+      .filter((task) => !term || `${task.title} ${task.description ?? ''}`.toLowerCase().includes(term))
+      .sort((a, b) => {
+        if (sort === 'priority') return priorityRank[a.priority] - priorityRank[b.priority] || (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999');
+        if (sort === 'created') return b.created_at.localeCompare(a.created_at);
+        if (sort === 'updated') return b.updated_at.localeCompare(a.updated_at);
+        if (sort === 'title') return a.title.localeCompare(b.title);
+        return Number(a.status === 'done') - Number(b.status === 'done') || (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999');
+      });
+  }, [data.tasks, due, priority, project, query, sort, status, tag, tagAssignments, today]);
+
+  const { visible, marker, shown, total } = useIncremental(filtered, 80);
 
   if (loading) return <PageSkeleton />;
+
+  const dayLabels = { today: t('common.today'), tomorrow: t('common.tomorrow'), yesterday: t('common.yesterday') };
+  const open = data.tasks.filter((task) => task.status !== 'done');
+  const overdue = open.filter((task) => task.due_date && task.due_date < today).length;
+  const summary = [
+    { key: 'open', label: t('tasks.todo'), value: data.tasks.filter((task) => task.status === 'todo').length, color: statusColors.todo, onClick: () => setStatus('todo') },
+    { key: 'progress', label: t('tasks.inProgress'), value: data.tasks.filter((task) => task.status === 'in-progress').length, color: statusColors['in-progress'], onClick: () => setStatus('in-progress') },
+    { key: 'overdue', label: t('filters.dueOverdue'), value: overdue, color: priorityColors.high, onClick: () => { setStatus(ANY); setDue('overdue'); } },
+    { key: 'done', label: t('tasks.done'), value: data.tasks.filter((task) => task.status === 'done').length, color: statusColors.done, onClick: () => setStatus('done') },
+  ];
 
   return (
     <div>
       <PageHeader
-        title="Tasks"
-        description={`${data.tasks.filter((task) => task.status !== 'done').length} offene Aufgaben · lokal gespeichert`}
-        action={<Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setAdding((value) => !value)}><Plus className="h-3.5 w-3.5" />New task</Button>}
+        title={t('tasks.title')}
+        description={t('tasks.description', { count: open.length })}
+        action={<Button onClick={() => setEditing('new')}><Plus />{t('tasks.new')}</Button>}
       />
-      {adding && (
-        <form onSubmit={addTask} className="mb-4 flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row">
-          <label className="sr-only" htmlFor="task-title">Task title</label>
-          <input id="task-title" autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Task title…" className="h-8 min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground" />
-          <label className="sr-only" htmlFor="task-priority">Priority</label>
-          <select id="task-priority" value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)} className="h-8 rounded-md border border-input bg-background px-2 text-xs">
-            <option value="low">Low priority</option><option value="medium">Medium priority</option><option value="high">High priority</option>
-          </select>
-          <Button type="submit" size="sm" className="h-8 text-xs">Add task</Button>
-        </form>
+
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {summary.map((item) => (
+          <button key={item.key} type="button" onClick={item.onClick}
+            className="group flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3 text-left transition-colors hover:bg-accent/60">
+            <span className="h-8 w-1 rounded-full" style={{ background: item.color }} />
+            <span>
+              <span className="block text-xl font-semibold tabular-nums">{item.value}</span>
+              <span className="block text-xs text-muted-foreground">{item.label}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <FilterBar
+        className="mb-4"
+        filters={[
+          { key: 'status', label: t('filters.status'), value: status, onChange: setStatus, options: [
+            { value: 'open', label: `${t('tasks.todo')} + ${t('tasks.inProgress')}` },
+            ...(Object.keys(statusKeys) as TaskStatus[]).map((value) => ({ value, label: t(statusKeys[value]), color: statusColors[value] })),
+          ] },
+          { key: 'priority', label: t('filters.priority'), value: priority, onChange: setPriority,
+            options: (['high', 'medium', 'low'] as TaskPriority[]).map((value) => ({ value, label: t(priorityKeys[value]), color: priorityColors[value] })) },
+          { key: 'due', label: t('filters.due'), value: due, onChange: setDue, options: [
+            { value: 'overdue', label: t('filters.dueOverdue'), color: priorityColors.high }, { value: 'today', label: t('filters.dueToday') },
+            { value: 'week', label: t('filters.dueWeek') }, { value: 'later', label: t('filters.dueLater') }, { value: 'none', label: t('filters.dueNone') },
+          ] },
+          { key: 'project', label: t('filters.project'), value: project, onChange: setProject,
+            options: [...data.projects.map((item) => ({ value: item.id, label: item.name, color: colorOf(item.name) })), { value: NO_PROJECT, label: t('filters.noProject') }] },
+          { key: 'tag', label: t('filters.tag'), value: tag, onChange: setTag,
+            options: tags.filter((entry) => entry.count).map((entry) => ({ value: entry.id, label: `#${entry.name}`, color: colorOf(entry.name) })) },
+        ]}
+        sort={{ value: sort, onChange: (value) => setSort(value as Sort), options: [
+          { value: 'due', label: t('filters.sortDue') }, { value: 'priority', label: t('filters.sortPriority') }, { value: 'created', label: t('filters.sortCreated') },
+          { value: 'updated', label: t('filters.sortUpdated') }, { value: 'title', label: t('filters.sortTitle') },
+        ] }}
+      >
+        <SearchInput value={query} onChange={setQuery} placeholder={t('tasks.search')} className="sm:w-64 [&_input]:h-8 [&_input]:rounded-full" />
+      </FilterBar>
+
+      {filtered.length ? (
+        <>
+          <p className="mb-2 px-1 text-xs text-muted-foreground">{t('filters.showing', { shown, total })}</p>
+          <div className="divide-y divide-border/60 border-y">
+            {visible.map((task) => {
+              const done = task.status === 'done';
+              const late = !done && task.due_date !== null && task.due_date < today;
+              const taskProject = task.project_id ? projects.get(task.project_id) : undefined;
+              return (
+                <div key={task.id} className="lazy-row group relative flex items-center gap-3 py-2.5 pl-4 pr-2 transition-colors hover:bg-accent/40">
+                  <span className="absolute inset-y-2 left-0 w-[3px] rounded-full" style={{ background: priorityColors[task.priority], opacity: done ? 0.3 : 1 }} aria-hidden="true" />
+                  <Checkbox checked={done} onCheckedChange={(checked) => void update('tasks', task.id, { status: checked ? 'done' : 'todo' })} aria-label={`${t('tasks.done')}: ${task.title}`} />
+                  <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setEditing(task)}>
+                    <p className={cn('truncate text-sm font-medium transition-colors duration-300', done && 'text-muted-foreground line-through')}>{task.title}</p>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {taskProject && <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: colorOf(taskProject.name) }} />{taskProject.name}</span>}
+                      {task.due_date && (
+                        <span className={cn('inline-flex items-center gap-1', late && 'font-medium text-destructive')}>
+                          <CalendarClock className="h-3 w-3" />{late ? `${t('tasks.overdue')} · ` : ''}{relativeDay(task.due_date, language, dayLabels)}
+                        </span>
+                      )}
+                      <EntityTags type="task" id={task.id} limit={3} plain className="[&>span]:h-5" />
+                    </p>
+                  </button>
+                  <span className="hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium md:inline-flex"
+                    style={{ color: priorityColors[task.priority], background: `color-mix(in srgb, ${priorityColors[task.priority]} 12%, transparent)` }}>
+                    {t(priorityKeys[task.priority])}
+                  </span>
+                  <Select value={task.status} onValueChange={(value) => void update('tasks', task.id, { status: value as TaskStatus })}>
+                    <SelectTrigger className="hidden h-8 w-[130px] gap-1.5 rounded-full text-xs sm:flex" aria-label={t('common.status')}>
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: statusColors[task.status] }} /><SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(statusKeys) as TaskStatus[]).map((value) => <SelectItem key={value} value={value}>{t(statusKeys[value])}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon-sm" className="text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100" aria-label={`${t('common.edit')}: ${task.title}`} onClick={() => setEditing(task)}><Pencil /></Button>
+                  <DeleteButton name={task.title} onConfirm={() => void remove('tasks', task.id)} />
+                </div>
+              );
+            })}
+          </div>
+          {marker}
+        </>
+      ) : (
+        <EmptyState icon={CheckSquare2} title={t('tasks.empty')} description={t('tasks.emptyDesc')} action={<Button variant="outline" onClick={() => setEditing('new')}><Plus />{t('tasks.new')}</Button>} />
       )}
 
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-1" aria-label="Filter tasks">
-          {[['all', 'All'], ['todo', 'To do'], ['in-progress', 'In progress'], ['done', 'Done']].map(([value, label]) => (
-            <Button key={value} variant={filter === value ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2.5 text-[11px]" onClick={() => setFilter(value as typeof filter)}>{label}</Button>
-          ))}
-        </div>
-        <div className="relative"><Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" /><SearchInput value={query} onChange={setQuery} placeholder="Search tasks" /></div>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="hidden grid-cols-[minmax(0,1fr)_135px_110px_90px_32px] items-center gap-3 border-b border-border px-4 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:grid">
-          <span>Task</span><span>Status</span><span>Priority</span><span>Due</span><span />
-        </div>
-        {visibleTasks.map((task) => {
-          const StatusIcon = task.status === 'done' ? Check : task.status === 'in-progress' ? CircleDashed : Circle;
-          return (
-            <div key={task.id} className="grid grid-cols-[minmax(0,1fr)_32px] items-center gap-3 border-b border-border/70 px-3 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_135px_110px_90px_32px] sm:px-4">
-              <div className="min-w-0">
-                <p className={`truncate text-xs font-medium ${task.status === 'done' ? 'text-muted-foreground line-through' : ''}`}>{task.title}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground sm:hidden">{statusNames[task.status]} · {task.priority} · {task.due}</p>
-              </div>
-              <label className="sr-only" htmlFor={`status-${task.id}`}>Status: {task.title}</label>
-              <div className="hidden items-center gap-1.5 sm:flex">
-                <StatusIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                <label className="sr-only" htmlFor={`desktop-status-${task.id}`}>Status: {task.title}</label>
-                <select id={`desktop-status-${task.id}`} value={task.status} onChange={(event) => updateData((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, status: event.target.value as TaskStatus } : item) }))} className="h-7 rounded-md border border-input bg-background px-1.5 text-[10px] text-muted-foreground">
-                  <option value="todo">To do</option><option value="in-progress">In progress</option><option value="done">Done</option>
-                </select>
-              </div>
-              <span className="hidden text-[11px] capitalize text-muted-foreground sm:block">{task.priority}</span>
-              <span className="hidden text-[11px] text-muted-foreground sm:block">{task.due}</span>
-              <div className="flex items-center gap-1">
-                <select
-                  id={`status-${task.id}`}
-                  value={task.status}
-                  onChange={(event) => updateData((current) => ({ ...current, tasks: current.tasks.map((item) => item.id === task.id ? { ...item, status: event.target.value as TaskStatus } : item) }))}
-                  aria-label={`Status ändern: ${task.title}`}
-                  className="h-7 max-w-24 rounded-md border border-input bg-background px-1 text-[10px] sm:hidden"
-                ><option value="todo">To do</option><option value="in-progress">In progress</option><option value="done">Done</option></select>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" aria-label={`Delete ${task.title}`} onClick={() => updateData((current) => ({ ...current, tasks: current.tasks.filter((item) => item.id !== task.id) }))}><Trash2 className="h-3.5 w-3.5" /></Button>
-              </div>
-            </div>
-          );
-        })}
-        {visibleTasks.length === 0 && <div className="flex min-h-40 flex-col items-center justify-center gap-2 text-center"><ListFilter className="h-4 w-4 text-muted-foreground" /><p className="text-xs text-muted-foreground">No tasks match this view.</p></div>}
-      </div>
-      <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground"><Search className="h-3 w-3" />Search and status filters apply instantly.</p>
+      <OpenFromQuery items={data.tasks} onOpen={setEditing} />
+      <TaskDialog task={editing} onClose={() => { setEditing(null); clearQuery(); }} />
     </div>
   );
 }

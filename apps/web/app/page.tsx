@@ -1,90 +1,170 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, CalendarDays, CheckSquare2, Clock3, FileText, ListChecks, Plus, Sparkles } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
+import { ArrowRight, BellRing, CalendarDays, CheckSquare2, Clock3, FileText, FolderKanban, Lightbulb, Plus, Users } from 'lucide-react';
 
+import { DashboardInsights } from '@/components/dashboard-insights';
+import { useI18n } from '@/components/i18n-provider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PageHeader, PageSkeleton } from '@/components/workspace-ui';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { CountUp, PageHeader, PageSkeleton } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { toLocalDateKey } from '@/lib/workspace-data';
-
-const quickLinks = [
-  { label: 'Create a task', href: '/tasks', icon: CheckSquare2, hint: 'Add something to your list' },
-  { label: 'Open calendar', href: '/calendar', icon: CalendarDays, hint: 'Plan your next days' },
-  { label: 'Write a note', href: '/notes', icon: FileText, hint: 'Capture a thought' },
-  { label: 'Manage a list', href: '/lists', icon: ListChecks, hint: 'Keep things organized' },
-];
+import { markdownToPlainText } from '@/lib/markdown';
+import { addDays, formatDate, formatDateTime, relativeDay, toDateKey, todayKey } from '@/lib/dates';
 
 export default function DashboardPage() {
-  const { data, loading } = useWorkspace();
+  const { t, language } = useI18n();
+  const { data, loading, create, update } = useWorkspace();
+  const [quickTitle, setQuickTitle] = useState('');
+
   if (loading) return <PageSkeleton />;
 
-  const openTasks = data.tasks.filter((task) => task.status !== 'done').length;
-  const today = toLocalDateKey(new Date());
-  const upcoming = data.events.filter((event) => event.date >= today).length;
+  const today = todayKey();
+  const inAWeek = toDateKey(addDays(new Date(), 7));
+  const openTasks = data.tasks.filter((task) => task.status !== 'done');
+  const dueToday = openTasks.filter((task) => task.due_date && task.due_date <= today).length;
+  const focusTasks = [...openTasks]
+    .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') || b.created_at.localeCompare(a.created_at))
+    .slice(0, 6);
+  const agenda = [
+    ...data.events.map((event) => ({ id: event.id, title: event.title, date: event.date, time: event.time, kind: 'event' as const })),
+    ...data.meetings.filter((meeting) => meeting.status === 'planned').map((meeting) => ({ id: meeting.id, title: meeting.title, date: meeting.date, time: meeting.time, kind: 'meeting' as const })),
+    ...data.reminders.filter((reminder) => !reminder.done).map((reminder) => ({ id: reminder.id, title: reminder.text, date: reminder.remind_at.slice(0, 10), time: reminder.remind_at.slice(11, 16), kind: 'reminder' as const })),
+  ]
+    .filter((entry) => entry.date >= today)
+    .sort((a, b) => `${a.date}${a.time ?? ''}`.localeCompare(`${b.date}${b.time ?? ''}`));
+  const recentNotes = [...data.notes].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4);
+  const hour = new Date().getHours();
+  const greeting = hour < 11 ? t('dashboard.morning') : hour < 18 ? t('dashboard.afternoon') : t('dashboard.evening');
+  const dayLabels = { today: t('common.today'), tomorrow: t('common.tomorrow'), yesterday: t('common.yesterday') };
+
   const stats = [
-    { label: 'Open tasks', value: openTasks, note: `${data.tasks.filter((task) => task.due === 'Today' && task.status !== 'done').length} due today`, icon: CheckSquare2, href: '/tasks' },
-    { label: 'Upcoming events', value: upcoming, note: 'In your calendar', icon: CalendarDays, href: '/calendar' },
-    { label: 'Notes', value: data.notes.length, note: 'Saved locally', icon: FileText, href: '/notes' },
-    { label: 'Lists', value: data.lists.length, note: 'Across your workspace', icon: ListChecks, href: '/lists' },
+    { label: t('dashboard.openTasks'), value: openTasks.length, note: t('dashboard.dueToday', { count: dueToday }), icon: CheckSquare2, href: '/tasks' },
+    { label: t('dashboard.upcomingEvents'), value: agenda.filter((entry) => entry.date <= inAWeek).length, note: t('dashboard.next7Days'), icon: CalendarDays, href: '/calendar' },
+    { label: t('dashboard.activeProjects'), value: data.projects.filter((project) => project.status === 'active').length, note: t('dashboard.ofTotal', { count: data.projects.length }), icon: FolderKanban, href: '/projects' },
+    { label: t('dashboard.ideas'), value: data.ideas.filter((idea) => idea.status !== 'archived').length, note: t('dashboard.capturedIdeas'), icon: Lightbulb, href: '/ideas' },
   ];
+
+  async function quickAdd(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const title = quickTitle.trim();
+    if (!title) return;
+    setQuickTitle('');
+    await create('tasks', { title });
+  }
 
   return (
     <div>
-      <PageHeader title="Good morning" description="A quiet overview of your workspace." />
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace statistics">
+      <PageHeader title={greeting} description={`${formatDate(today, language, { weekday: 'long', day: 'numeric', month: 'long' })} · ${t('dashboard.subtitle')}`} />
+
+      <section className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {stats.map(({ label, value, note, icon: Icon, href }) => (
-          <Link key={label} href={href} className="group rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/60">
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground"><span>{label}</span><Icon className="h-3.5 w-3.5" /></div>
-            <p className="mt-4 text-2xl font-semibold tabular-nums tracking-tight">{value.toString().padStart(2, '0')}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">{note}</p>
+          <Link key={href} href={href} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Card className="card-hover h-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardDescription className="font-medium">{label}</CardDescription>
+                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground"><Icon className="h-3.5 w-3.5" /></span>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl"><CountUp value={value} /></p>
+                <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+              </CardContent>
+            </Card>
           </Link>
         ))}
       </section>
 
-      <section className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(270px,1fr)]">
-        <div className="rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div><h2 className="text-xs font-medium">Recent tasks</h2><p className="mt-0.5 text-[10px] text-muted-foreground">Pick up where you left off</p></div>
-            <Link href="/tasks" className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground">View all <ArrowRight className="h-3 w-3" /></Link>
-          </div>
-          {data.tasks.filter((task) => task.status !== 'done').slice(0, 4).map((task) => (
-            <Link key={task.id} href="/tasks" className="flex items-center gap-3 border-b border-border/70 px-4 py-3 last:border-0 hover:bg-accent/40">
-              <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/60" />
-              <span className="min-w-0 flex-1 truncate text-xs">{task.title}</span>
-              <span className="text-[10px] capitalize text-muted-foreground">{task.priority}</span>
-              <span className="hidden text-[10px] text-muted-foreground sm:inline">{task.due}</span>
-            </Link>
-          ))}
-          {openTasks === 0 && <p className="px-4 py-8 text-center text-xs text-muted-foreground">All caught up. No open tasks.</p>}
-        </div>
+      <section className="mt-6 grid gap-6 lg:grid-cols-5">
+        <Card className="lg:col-span-3">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="space-y-1.5">
+              <CardTitle className="text-base">{t('dashboard.focus')}</CardTitle>
+              <CardDescription>{t('dashboard.focusDesc')}</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild><Link href="/tasks">{t('dashboard.viewAll')}<ArrowRight /></Link></Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <form onSubmit={quickAdd} className="mb-3 flex gap-2">
+              <Input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder={t('dashboard.quickAdd')} aria-label={t('dashboard.quickAdd')} />
+              <Button type="submit" size="icon" variant="secondary" aria-label={t('tasks.new')} disabled={!quickTitle.trim()}><Plus /></Button>
+            </form>
+            {focusTasks.map((task) => {
+              const overdue = task.due_date !== null && task.due_date < today;
+              return (
+                <div key={task.id} className="row-enter flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+                  <Checkbox checked={false} onCheckedChange={() => void update('tasks', task.id, { status: 'done' })} aria-label={`${t('tasks.done')}: ${task.title}`} />
+                  <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
+                  {task.priority === 'high' && <Badge variant="destructive">{t('tasks.high')}</Badge>}
+                  {task.due_date && (
+                    <span className={overdue ? 'text-xs font-medium text-destructive' : 'text-xs text-muted-foreground'}>
+                      {relativeDay(task.due_date, language, dayLabels)}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+            {focusTasks.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t('dashboard.allDone')}</p>}
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3"><h2 className="text-xs font-medium">Quick access</h2><p className="mt-0.5 text-[10px] text-muted-foreground">Jump into your workspace</p></div>
-          <div className="grid grid-cols-2 gap-2 p-3">
-            {quickLinks.map(({ label, href, icon: Icon, hint }) => <Link key={href} href={href} className="rounded-md border border-border/80 p-2.5 transition-colors hover:bg-accent"><Icon className="mb-3 h-4 w-4 text-muted-foreground" /><span className="block text-[11px] font-medium">{label}</span><span className="mt-1 block text-[9px] text-muted-foreground">{hint}</span></Link>)}
-          </div>
-        </div>
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="space-y-1.5">
+              <CardTitle className="text-base">{t('dashboard.upcoming')}</CardTitle>
+              <CardDescription>{t('dashboard.upcomingDesc')}</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon-sm" asChild aria-label={t('nav.calendar')}><Link href="/calendar"><CalendarDays /></Link></Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {agenda.slice(0, 6).map((entry) => (
+              <Link key={entry.id} href={entry.kind === 'meeting' ? '/meetings' : entry.kind === 'reminder' ? '/reminders' : `/calendar?date=${entry.date}`} className="group flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+                  {entry.kind === 'meeting' ? <Users className="h-4 w-4 text-muted-foreground" /> : entry.kind === 'reminder' ? <BellRing className="h-4 w-4 text-muted-foreground" /> : <Clock3 className="h-4 w-4 text-muted-foreground" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm">{entry.title}</p>
+                  <p className="text-xs text-muted-foreground">{relativeDay(entry.date, language, dayLabels)}{entry.time ? ` · ${entry.time}` : ''}</p>
+                </div>
+              </Link>
+            ))}
+            {agenda.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">{t('dashboard.noUpcoming')}</p>}
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 className="text-xs font-medium">Upcoming</h2><p className="mt-0.5 text-[10px] text-muted-foreground">Your next calendar entries</p></div><Link href="/calendar" aria-label="Open calendar" className="text-muted-foreground hover:text-foreground"><CalendarDays className="h-4 w-4" /></Link></div>
-          {data.events.filter((event) => event.date >= today).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).slice(0, 3).map((event) => <div key={event.id} className="flex items-center gap-3 border-b border-border/70 px-4 py-2.5 last:border-0"><Clock3 className="h-3.5 w-3.5 text-muted-foreground" /><span className="flex-1 truncate text-xs">{event.title}</span><span className="text-[10px] text-muted-foreground">{new Date(`${event.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {event.time}</span></div>)}
-          {data.events.length === 0 && <p className="px-4 py-7 text-center text-xs text-muted-foreground">No upcoming events.</p>}
-        </div>
-        <div className="rounded-lg border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3"><div><h2 className="text-xs font-medium">Recent activity</h2><p className="mt-0.5 text-[10px] text-muted-foreground">Recently updated notes</p></div><Sparkles className="h-3.5 w-3.5 text-muted-foreground" /></div>
-          {data.notes.slice(0, 3).map((note) => <Link key={note.id} href="/notes" className="flex items-center gap-3 border-b border-border/70 px-4 py-2.5 last:border-0 hover:bg-accent/40"><FileText className="h-3.5 w-3.5 text-muted-foreground" /><span className="flex-1 truncate text-xs">{note.title}</span><span className="text-[10px] text-muted-foreground">{note.updatedAt}</span></Link>)}
-          {data.notes.length === 0 && <div className="flex flex-col items-center py-6"><p className="text-xs text-muted-foreground">Your activity will appear here.</p><Link href="/notes" className="mt-2 inline-flex items-center gap-1 text-[10px] hover:underline"><Plus className="h-3 w-3" />Create a note</Link></div>}
-        </div>
-      </section>
+      <Card className="mt-6">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle className="text-base">{t('dashboard.recentNotes')}</CardTitle>
+            <CardDescription>{t('dashboard.recentNotesDesc')}</CardDescription>
+          </div>
+          <Button variant="ghost" size="sm" asChild><Link href="/notes">{t('dashboard.viewAll')}<ArrowRight /></Link></Button>
+        </CardHeader>
+        <CardContent>
+          {recentNotes.length ? (
+            <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {recentNotes.map((note) => (
+                <Link key={note.id} href={`/notes?id=${note.id}`} className="card-hover rounded-lg border bg-background/50 p-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="truncate text-sm font-medium">{note.title || t('common.untitled')}</p>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{markdownToPlainText(note.content) || t('notes.noContent')}</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{formatDateTime(note.updated_at, language)}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="py-6 text-center text-sm text-muted-foreground">{t('dashboard.noNotes')}</p>
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="mt-4 flex flex-col gap-2 rounded-lg border border-border bg-card px-4 py-3 sm:flex-row sm:items-center">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted"><Sparkles className="h-3.5 w-3.5 text-muted-foreground" /></span>
-        <p className="flex-1 text-[11px] text-muted-foreground"><span className="font-medium text-foreground">Private by default.</span> Workspace data is saved in this browser and ready for future MCP integrations.</p>
-        <Button variant="outline" size="sm" className="h-7 text-[10px]" asChild><Link href="/database">Browse database</Link></Button>
-      </div>
+      <DashboardInsights />
     </div>
   );
 }

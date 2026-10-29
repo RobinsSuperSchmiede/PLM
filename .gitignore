@@ -21,3 +21,8 @@ __pycache__/
 
 # Docker
 *.sqlite3
+*.tsbuildinfo
+*.egg-info/
+
+# Uploaded files (local storage of the API)
+apps/api/data/

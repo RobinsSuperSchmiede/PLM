@@ -46,8 +46,10 @@ services:
       dockerfile: Dockerfile
     container_name: plm-web
     restart: unless-stopped
+    env_file:
+      - ./.env
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_INTERNAL_URL: http://api:8000
     depends_on:
       - api
     ports:

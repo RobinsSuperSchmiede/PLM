@@ -2,40 +2,324 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 5%;
-  --foreground: 0 0% 92%;
-  --card: 0 0% 7%;
-  --card-foreground: 0 0% 92%;
-  --primary: 0 0% 92%;
-  --primary-foreground: 0 0% 8%;
-  --muted: 0 0% 11%;
-  --muted-foreground: 0 0% 56%;
-  --border: 0 0% 15%;
-  --input: 0 0% 16%;
-  --ring: 0 0% 55%;
-  --accent: 0 0% 12%;
-  --accent-foreground: 0 0% 92%;
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 12% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 12% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 12% 4%;
+    --primary: 240 12% 5%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 6% 94.5%;
+    --secondary-foreground: 240 12% 5%;
+    --muted: 240 6% 95.5%;
+    --muted-foreground: 240 5% 34%;
+    --accent: 240 6% 94%;
+    --accent-foreground: 240 12% 5%;
+    --destructive: 0 74% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 69% 31%;
+    --warning: 32 95% 42%;
+    --info: 217 91% 50%;
+    --brand-l: 262 75% 55%;
+    --brand-d: 262 90% 72%;
+    --brand: var(--brand-l);
+    --tag-l: 38%;
+    --border: 240 6% 87%;
+    --input: 240 6% 82%;
+    --ring: 240 12% 5%;
+    --sidebar: 240 8% 97.5%;
+    --glow: var(--brand);
+    --radius: 0.625rem;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .dark {
+    --background: 240 6% 1.8%;
+    --foreground: 0 0% 98%;
+    --card: 240 5% 4.2%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 5.5%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 3%;
+    --secondary: 240 4% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 8.5%;
+    --muted-foreground: 240 5% 68%;
+    --accent: 240 4% 9.5%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 68% 50%;
+    --warning: 38 95% 58%;
+    --info: 213 94% 66%;
+    --brand: var(--brand-d);
+    --tag-l: 72%;
+    --border: 240 4% 13%;
+    --input: 240 4% 17%;
+    --ring: 0 0% 92%;
+    --sidebar: 0 0% 0%;
+    --glow: var(--brand);
+  }
 }
 
-html {
-  color-scheme: dark;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  ::selection {
+    background: hsl(var(--glow) / 0.25);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
 }
 
-body {
+@layer components {
+  /* Soft ambient glow behind the page header. */
+  .page-glow {
+    background-image: radial-gradient(60rem 18rem at 50% -8rem, hsl(var(--glow) / 0.09), transparent 70%);
+  }
+
+  /* Each top-level block of a page fades in, one after another. */
+  .page-enter > * > * {
+    animation: enter 0.5s var(--ease-out) backwards;
+  }
+  .page-enter > * > *:nth-child(2) { animation-delay: 60ms; }
+  .page-enter > * > *:nth-child(3) { animation-delay: 120ms; }
+  .page-enter > * > *:nth-child(4) { animation-delay: 180ms; }
+  .page-enter > * > *:nth-child(n + 5) { animation-delay: 240ms; }
+
+  /* Children of a .stagger container appear in sequence. */
+  .stagger > * {
+    animation: enter 0.45s var(--ease-out) backwards;
+  }
+  .stagger > *:nth-child(2) { animation-delay: 40ms; }
+  .stagger > *:nth-child(3) { animation-delay: 80ms; }
+  .stagger > *:nth-child(4) { animation-delay: 120ms; }
+  .stagger > *:nth-child(5) { animation-delay: 160ms; }
+  .stagger > *:nth-child(6) { animation-delay: 200ms; }
+  .stagger > *:nth-child(n + 7) { animation-delay: 240ms; }
+
+  /* Rows that are added later slide in. */
+  .row-enter {
+    animation: row-enter 0.35s var(--ease-out) backwards;
+  }
+
+  /* Interactive cards lift slightly on hover. */
+  .card-hover {
+    transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out), border-color 0.25s, background-color 0.25s;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--foreground) / 0.12);
+    box-shadow: 0 8px 24px -12px hsl(240 10% 3.9% / 0.18);
+  }
+  .card-hover:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted-foreground) / 0.12) 50%, hsl(var(--muted)) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes row-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Markdown editor (TipTap) – no toolbar, so the content itself carries the formatting cues. */
+.markdown-editor {
+  min-height: 100%;
+}
+.markdown-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+.markdown-editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.125rem;
+}
+.markdown-editor ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.markdown-editor ul[data-type='taskList'] li > label {
+  margin-top: 0.42rem;
+  user-select: none;
+}
+.markdown-editor ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+.markdown-editor ul[data-type='taskList'] li > div > p {
   margin: 0;
-  min-height: 100vh;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-size: 14px;
+}
+.markdown-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: hsl(var(--muted-foreground));
+  text-decoration: line-through;
+}
+.markdown-editor input[type='checkbox'] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: hsl(var(--primary));
+}
+.markdown-editor blockquote {
+  border-left-color: hsl(var(--border));
+  font-style: normal;
+}
+.markdown-editor hr {
+  border-color: hsl(var(--border));
+}
+.markdown-editor blockquote p::before,
+.markdown-editor blockquote p::after {
+  content: none;
 }
 
-* { box-sizing: border-box; }
+/* Brand word in the sidebar: letters drift up and out, then settle back in – slow, endless and subtle. */
+.brand-word > span {
+  display: inline-block;
+  animation: brand-cycle 10s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 45ms);
+}
 
-h1, h2, h3, h4, p { margin: 0; }
+@keyframes brand-cycle {
+  0%, 80% { opacity: 1; transform: none; filter: none; }
+  86% { opacity: 0; transform: translateY(-7px); filter: blur(3px); }
+  87% { opacity: 0; transform: translateY(7px); filter: blur(3px); }
+  94%, 100% { opacity: 1; transform: none; filter: none; }
+}
 
-::selection {
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
+/* Primary buttons get a soft highlight sweep on hover. */
+.btn-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.btn-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, hsl(0 0% 100% / 0.18) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out);
+  pointer-events: none;
+}
+.btn-sheen:hover::after {
+  transform: translateX(120%);
+}
+
+/* --- Appearance preferences (Settings → Appearance) ------------------------------------------ */
+html[data-density='compact'] {
+  font-size: 14.5px;
+}
+
+/* Flat surfaces: cards blend into the page, separated by hairlines instead of fills and shadows. */
+:root[data-surface='flat'],
+:root.dark[data-surface='flat'] {
+  --card: var(--background);
+}
+:root[data-surface='flat'] .shadow-sm,
+:root[data-surface='flat'] .shadow {
+  box-shadow: none;
+}
+
+:root[data-accent-buttons='true'],
+:root.dark[data-accent-buttons='true'] {
+  --primary: var(--brand);
+  --primary-foreground: 0 0% 100%;
+}
+
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Long lists render lazily: off-screen rows skip layout and paint. */
+.lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 48px;
+}
+.lazy-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px;
+}
+
+/* --- Mobile ------------------------------------------------------------------------------------ */
+/* Grid children may shrink below their content, so truncated text never pushes the page sideways. */
+main .grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  /* 16px stops iOS from zooming into focused fields. */
+  input, textarea, select, .ProseMirror {
+    font-size: 16px !important;
+  }
+}
+
+/* Touch screens have no hover: actions that only appear on hover are always shown there. */
+@media (hover: none) {
+  [class*='group-hover:opacity-100'] {
+    opacity: 1 !important;
+  }
+  [class*='group-hover:flex'] {
+    display: flex !important;
+  }
+  [class*='group-hover:hidden'] {
+    display: none !important;
+  }
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Toasts sit above the bottom navigation on phones. */
+@media (max-width: 1023px) {
+  [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+  }
 }

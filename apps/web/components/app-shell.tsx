@@ -1,203 +1,249 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  Activity, Archive, ArrowUp, Bell, BookOpen, CalendarDays, CheckSquare2,
-  ChevronLeft, Command, Database, FileText, FolderKanban, Home, Lightbulb, ListTodo,
-  Menu, NotebookPen, Plus, Search, Settings, Sparkles, X,
-  type LucideIcon,
+  Archive, BellRing, BookOpen, Bot, CalendarDays, CheckSquare2, Code2, Database, FileText, Folder, FolderKanban, Hash, Home, Image as ImageIcon, LifeBuoy, Lightbulb, ListTodo, type LucideIcon, Menu, Network, NotebookPen, PanelLeftClose, PanelLeftOpen, Paperclip, Search, Send, Settings, Users,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
+import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+import { TelegramMenu } from '@/components/quick-capture';
+import { GlobalSearch } from '@/components/global-search';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/components/workspace-provider';
+import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
-const navItems: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: 'Dashboard', href: '/', icon: Home },
-  { label: 'Projects', href: '/projects', icon: FolderKanban },
-  { label: 'Tasks', href: '/tasks', icon: CheckSquare2 },
-  { label: 'Calendar', href: '/calendar', icon: CalendarDays },
-  { label: 'Meetings', href: '/meetings', icon: Activity },
-  { label: 'Notes', href: '/notes', icon: NotebookPen },
-  { label: 'Lists', href: '/lists', icon: ListTodo },
-  { label: 'Ideas', href: '/ideas', icon: Lightbulb },
-  { label: 'Knowledge', href: '/knowledge', icon: BookOpen },
-  { label: 'Database', href: '/database', icon: Database },
-  { label: 'AI Assistant', href: '/ai-assistant', icon: Sparkles },
-  { label: 'Developer Center', href: '/developer-center', icon: Archive },
+type NavItem = { key: TranslationKey; href: string; icon: LucideIcon };
+
+const navGroups: { key: TranslationKey | null; items: NavItem[] }[] = [
+  { key: null, items: [{ key: 'nav.dashboard', href: '/', icon: Home }] },
+  {
+    key: 'nav.groupPlan',
+    items: [
+      { key: 'nav.projects', href: '/projects', icon: FolderKanban },
+      { key: 'nav.tasks', href: '/tasks', icon: CheckSquare2 },
+      { key: 'nav.calendar', href: '/calendar', icon: CalendarDays },
+      { key: 'nav.reminders', href: '/reminders', icon: BellRing },
+      { key: 'nav.meetings', href: '/meetings', icon: Users },
+    ],
+  },
+  {
+    key: 'nav.groupKnowledge',
+    items: [
+      { key: 'nav.notes', href: '/notes', icon: NotebookPen },
+      { key: 'nav.knowledge', href: '/knowledge', icon: BookOpen },
+      { key: 'nav.graph', href: '/graph', icon: Network },
+      { key: 'nav.tags', href: '/tags', icon: Hash },
+      { key: 'nav.files', href: '/files', icon: Paperclip },
+      { key: 'nav.images', href: '/images', icon: ImageIcon },
+      { key: 'nav.lists', href: '/lists', icon: ListTodo },
+      { key: 'nav.ideas', href: '/ideas', icon: Lightbulb },
+    ],
+  },
+  {
+    key: 'nav.groupSystem',
+    items: [
+      { key: 'nav.archive', href: '/archive', icon: Archive },
+      { key: 'nav.database', href: '/database', icon: Database },
+      { key: 'nav.telegram', href: '/telegram', icon: Send },
+      { key: 'nav.assistant', href: '/ai-assistant', icon: Bot },
+      { key: 'nav.developer', href: '/developer-center', icon: Code2 },
+    ],
+  },
 ];
 
-const pageNames = Object.fromEntries(navItems.map((item) => [item.href, item.label]));
+const bottomItems: NavItem[] = [{ key: 'nav.docs', href: '/docs', icon: LifeBuoy }, { key: 'nav.settings', href: '/settings', icon: Settings }];
+const allNavItems = [...navGroups.flatMap((group) => group.items), ...bottomItems];
+
+/** Thumb-reachable navigation on phones; "Menu" opens the full sidebar as a drawer. */
+const mobileNav: NavItem[] = [
+  { key: 'nav.dashboard', href: '/', icon: Home },
+  { key: 'nav.notes', href: '/notes', icon: NotebookPen },
+  { key: 'nav.tasks', href: '/tasks', icon: CheckSquare2 },
+  { key: 'nav.calendar', href: '/calendar', icon: CalendarDays },
+  { key: 'nav.menu', href: '#menu', icon: Menu },
+];
+
+/** Pages that lay out their own explorer + content panes edge to edge (no page padding). */
+const fullBleed = ['/notes', '/files', '/images', '/docs', '/database'];
+
+const isActive = (pathname: string, href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { data, storageError } = useWorkspace();
+  const router = useRouter();
+  const { t } = useI18n();
+  const { data, error, reload } = useWorkspace();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [platform, setPlatform] = useState('Ctrl');
+  const [modifier, setModifier] = useState('Ctrl');
 
   useEffect(() => {
-    setPlatform(navigator.platform.includes('Mac') ? '⌘' : 'Ctrl');
-    const openPalette = (event: KeyboardEvent) => {
+    setModifier(/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl');
+    const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen((open) => !open);
       }
-      if (event.key === 'Escape') setPaletteOpen(false);
     };
-    window.addEventListener('keydown', openPalette);
-    return () => window.removeEventListener('keydown', openPalette);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const results = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return navItems.filter((item) => !term || item.label.toLowerCase().includes(term));
-  }, [query]);
-  const contentResults = useMemo(() => [
-    ...data.tasks.map((item) => ({ ...item, kind: 'Task', href: '/tasks', icon: CheckSquare2 })),
-    ...data.notes.map((item) => ({ ...item, kind: 'Note', href: '/notes', icon: FileText })),
-    ...data.lists.map((item) => ({ ...item, kind: 'List', href: '/lists', icon: ListTodo })),
-    ...data.events.map((item) => ({ ...item, kind: 'Event', href: '/calendar', icon: CalendarDays })),
-    ...data.records.map((item) => ({ ...item, title: item.name, kind: 'Record', href: '/database', icon: Database })),
-  ].filter((item) => query.trim() && item.title.toLowerCase().includes(query.trim().toLowerCase())), [data, query]);
-  const title = pageNames[pathname] || 'Workspace';
-  const SidebarIcon = Menu;
+  useEffect(() => setMobileOpen(false), [pathname]);
 
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="flex min-h-screen">
-        <aside
-          className={cn(
-            'fixed inset-y-0 left-0 z-40 flex w-[252px] flex-col border-r border-border bg-card transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
-            collapsed && 'lg:w-[66px]',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          )}
-          aria-label="Hauptnavigation"
-        >
-          <div className={cn('flex h-[58px] items-center border-b border-border px-3', collapsed ? 'lg:justify-center' : 'gap-3')}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-foreground text-[10px] font-bold tracking-tight text-background">PLM</div>
-            <div className={cn('min-w-0 flex-1 transition-opacity', collapsed && 'lg:hidden')}>
-              <p className="truncate text-[13px] font-semibold">Personal workspace</p>
-              <p className="text-[10px] text-muted-foreground">LOCAL · PRIVATE</p>
-            </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Navigation schließen">
-              <X className="h-4 w-4" />
+  const openTasks = data.tasks.filter((task) => task.status !== 'done').length;
+
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className={cn('flex h-14 shrink-0 items-center gap-2 border-b border-transparent px-4', collapsed && 'lg:justify-center lg:px-0')}>
+        <Link href="/" className={cn('min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', collapsed && 'lg:hidden')}>
+          <BrandWord />
+        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" className="hidden shrink-0 text-muted-foreground hover:text-foreground lg:inline-flex"
+              onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? t('shell.expand') : t('shell.collapse')} aria-expanded={!collapsed}>
+              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('hidden h-7 w-7 shrink-0 lg:inline-flex', collapsed && 'lg:hidden')}
-              onClick={() => setCollapsed(true)}
-              aria-label="Sidebar einklappen"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <nav className="flex-1 space-y-0.5 overflow-y-auto p-2" aria-label="Bereiche">
-            {!collapsed && <p className="mb-2 px-2 pt-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Workspace</p>}
-            {navItems.map(({ label, href, icon: Icon }) => {
-              const active = href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
-              const count = href === '/tasks' ? data.tasks.filter((task) => task.status !== 'done').length : undefined;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  title={collapsed ? label : undefined}
-                  onClick={() => setMobileOpen(false)}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'group flex h-8 items-center gap-2.5 rounded-md px-2 text-[12px] transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                    active ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground',
-                    collapsed && 'lg:justify-center lg:px-0',
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                  <span className={cn('min-w-0 flex-1 truncate', collapsed && 'lg:hidden')}>{label}</span>
-                  {count !== undefined && !collapsed && <span className="text-[10px] tabular-nums text-muted-foreground">{count}</span>}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="space-y-1 border-t border-border p-2">
-            {!collapsed && (
-              <div className="mb-1 flex items-center gap-2 rounded-md px-2 py-2 text-[10px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
-                Local workspace
-              </div>
-            )}
-            {collapsed && <Button variant="ghost" size="icon" className="hidden h-8 w-full lg:inline-flex" onClick={() => setCollapsed(false)} aria-label="Sidebar ausklappen"><Menu className="h-4 w-4" /></Button>}
-            <Link href="/settings" title={collapsed ? 'Settings' : undefined} className={cn('flex h-8 items-center gap-2.5 rounded-md px-2 text-[12px] text-muted-foreground hover:bg-accent hover:text-foreground', collapsed && 'lg:justify-center lg:px-0')}>
-              <Settings className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              <span className={cn(collapsed && 'lg:hidden')}>Settings</span>
-            </Link>
-          </div>
-        </aside>
-
-        {mobileOpen && <button className="fixed inset-0 z-30 bg-black/60 lg:hidden" aria-label="Navigation schließen" onClick={() => setMobileOpen(false)} />}
-
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 h-[52px] border-b border-border bg-background/90 backdrop-blur">
-            <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <Button variant="ghost" size="icon" className="h-8 w-8 lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Navigation öffnen">
-                  <SidebarIcon className="h-4 w-4" />
-                </Button>
-                <div className="hidden items-center gap-2 text-[11px] text-muted-foreground sm:flex" aria-label="Breadcrumb">
-                  <span>Workspace</span><span aria-hidden="true">/</span><span className="font-medium text-foreground">{title}</span>
-                </div>
-                <span className="truncate text-[12px] font-medium sm:hidden">{title}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button variant="outline" className="h-8 w-[min(35vw,230px)] justify-start gap-2 px-2.5 text-[11px] font-normal text-muted-foreground sm:w-56" onClick={() => setPaletteOpen(true)}>
-                  <Search className="h-3.5 w-3.5" /><span className="flex-1 text-left">Search workspace…</span>
-                  <kbd className="hidden rounded border border-border px-1 py-0.5 text-[9px] sm:inline">{platform} K</kbd>
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Notifications"><Bell className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          </header>
-          <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6 sm:py-6">
-            {storageError && <p role="alert" className="mb-4 rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground">{storageError}</p>}
-            {children}
-          </main>
-          <footer className="border-t border-border px-6 py-2 text-[10px] text-muted-foreground">PLM · Local-first workspace</footer>
-        </div>
+          </TooltipTrigger>
+          <TooltipContent side="right">{collapsed ? t('shell.expand') : t('shell.collapse')}</TooltipContent>
+        </Tooltip>
       </div>
 
-      {paletteOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/65 px-4 pt-[15vh]" onMouseDown={(event) => { if (event.target === event.currentTarget) setPaletteOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-label="Workspace-Suche" className="w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-border px-3">
-              <Command className="h-4 w-4 text-muted-foreground" />
-              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bereiche durchsuchen…" className="h-11 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-              <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">ESC</kbd>
-            </div>
-            <div className="max-h-[55vh] overflow-y-auto p-1.5">
-              {results.map(({ label, href, icon: Icon }) => (
-                <Link key={href} href={href} onClick={() => { setPaletteOpen(false); setQuery(''); }} className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm hover:bg-accent focus-visible:bg-accent focus-visible:outline-none">
-                  <Icon className="h-4 w-4 text-muted-foreground" /><span>{label}</span><ArrowUp className="ml-auto h-3 w-3 rotate-45 text-muted-foreground" />
-                </Link>
-              ))}
-              {results.length === 0 && contentResults.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">No results found.</p>}
-              {query.trim() && contentResults.length > 0 && (
-                <div className="mt-1 border-t border-border pt-1">
-                  {contentResults.map((item) => {
-                    const Icon = item.icon;
-                    return <Link key={`${item.kind}-${item.id}`} href={item.href} onClick={() => { setPaletteOpen(false); setQuery(''); }} className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground hover:bg-accent"><Icon className="h-4 w-4" /><span className="truncate text-foreground">{item.title}</span><span className="ml-auto text-[10px]">{item.kind}</span></Link>;
-                  })}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 border-t border-border px-3 py-2 text-[10px] text-muted-foreground"><Plus className="h-3 w-3" /> Quick navigation <span className="ml-auto">ESC to close</span></div>
-          </section>
+      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-2" aria-label="Navigation">
+        {navGroups.map((group, index) => (
+          <div key={group.key ?? index} className="space-y-0.5">
+            {group.key && !collapsed && <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">{t(group.key)}</p>}
+            {group.items.map((item) => (
+              <NavLink key={item.href} item={item} label={t(item.key)} active={isActive(pathname, item.href)} collapsed={collapsed}
+                badge={item.href === '/tasks' && openTasks > 0 ? openTasks : undefined} />
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      <div className="space-y-0.5 border-t p-2">
+        {bottomItems.map((item) => <NavLink key={item.href} item={item} label={t(item.key)} active={isActive(pathname, item.href)} collapsed={collapsed} />)}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <aside className={cn('sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r bg-[hsl(var(--sidebar))] transition-[width] duration-300 ease-[var(--ease-out)] lg:block', collapsed ? 'w-[60px]' : 'w-60')}>
+        {sidebar}
+      </aside>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <button className="absolute inset-0 bg-black/40 backdrop-blur-sm duration-200 animate-in fade-in" aria-label={t('shell.closeNav')} onClick={() => setMobileOpen(false)} />
+          <aside className="pb-safe absolute inset-y-0 left-0 w-[min(20rem,85vw)] border-r bg-background shadow-2xl duration-300 ease-[var(--ease-out)] animate-in slide-in-from-left">{sidebar}</aside>
         </div>
       )}
+
+      <div className="page-glow flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-border/60 bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <Suspense fallback={null}><Breadcrumbs /></Suspense>
+            </div>
+          </div>
+          <button type="button" onClick={() => setPaletteOpen(true)}
+            className="group flex h-9 w-9 items-center gap-2.5 rounded-full border bg-muted/40 px-0 text-sm text-muted-foreground shadow-sm transition-all duration-300 ease-[var(--ease-out)] hover:border-brand/40 hover:bg-background hover:text-foreground hover:shadow-[0_0_0_4px_hsl(var(--brand)/0.08)] sm:w-[22rem] sm:px-3.5 lg:w-[30rem]">
+            <Search className="mx-auto h-4 w-4 shrink-0 transition-colors group-hover:text-brand sm:mx-0" />
+            <span className="hidden flex-1 truncate text-left sm:inline">{t('search.trigger')}</span>
+            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border bg-background px-1.5 font-mono text-[10px] font-medium sm:inline-flex">{modifier} K</kbd>
+          </button>
+          <div className="flex items-center justify-end gap-1.5">
+            <TelegramMenu />
+          </div>
+        </header>
+
+        <main className={cn('w-full flex-1 pb-20 lg:pb-0', fullBleed.some((href) => isActive(pathname, href)) ? 'min-h-0' : 'mx-auto max-w-[1800px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8 2xl:px-14')}>
+          {error && (
+            <div role="alert" className="mb-6 flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm animate-in fade-in slide-in-from-top-2 sm:flex-row sm:items-center">
+              <p className="flex-1"><span className="font-medium">{t('common.errorLoading')}</span> <span className="text-muted-foreground">{error}</span></p>
+              <Button size="sm" variant="outline" onClick={() => void reload()}>{t('common.retry')}</Button>
+            </div>
+          )}
+          <div key={pathname} className="page-enter">{children}</div>
+        </main>
+      </div>
+
+      <nav aria-label={t('shell.openNav')} className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur-xl lg:hidden">
+        <div className="grid grid-cols-5">
+          {mobileNav.map((item) => {
+            const active = item.href !== '#menu' && isActive(pathname, item.href);
+            const content = (
+              <>
+                <span className={cn('flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200', active && 'bg-brand/15 text-brand')}>
+                  <item.icon className="h-5 w-5" />
+                </span>
+                <span className="text-[10px] font-medium">{t(item.key)}</span>
+              </>
+            );
+            const className = cn('flex flex-col items-center gap-0.5 py-2 transition-colors', active ? 'text-foreground' : 'text-muted-foreground');
+            return item.href === '#menu' ? (
+              <button key={item.href} type="button" onClick={() => setMobileOpen(true)} className={className} aria-label={t('shell.openNav')}>{content}</button>
+            ) : (
+              <Link key={item.href} href={item.href} className={className} aria-current={active ? 'page' : undefined}>{content}</Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={allNavItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />
     </div>
+  );
+}
+
+function NavLink({ item, label, active, collapsed, badge }: { item: NavItem; label: string; active: boolean; collapsed: boolean; badge?: number }) {
+  const link = (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-[0.98]',
+        active ? 'bg-accent font-medium text-foreground shadow-[inset_0_0_0_1px_hsl(var(--border))]' : 'text-muted-foreground',
+        collapsed && 'lg:justify-center lg:px-0',
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute -left-2 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-brand shadow-[0_0_10px_hsl(var(--brand)/0.7)] transition-all duration-300 ease-[var(--ease-out)]',
+          active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0',
+        )}
+      />
+      <item.icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110', active && 'text-brand')} />
+      <span className={cn('flex-1 truncate', collapsed && 'lg:hidden')}>{label}</span>
+      {badge !== undefined && (
+        <span key={badge} className={cn('rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground duration-300 animate-in zoom-in-50', collapsed && 'lg:hidden')}>{badge}</span>
+      )}
+    </Link>
+  );
+  if (!collapsed) return link;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+/** The brand name; its letters drift up and back in an endless, quiet loop. */
+function BrandWord() {
+  return (
+    <p className="brand-word truncate text-[15px] font-semibold leading-tight tracking-tight" aria-label="Anamnesies">
+      {Array.from('Anamnesies').map((letter, index) => (
+        <span key={index} aria-hidden="true" style={{ '--i': index } as React.CSSProperties}>{letter}</span>
+      ))}
+    </p>
   );
 }

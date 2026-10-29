@@ -1,84 +1,148 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
-import { Check, ListChecks, Plus, Trash2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, Suspense, useMemo, useState } from 'react';
+import { ListChecks, Plus, X } from 'lucide-react';
 
+import { useI18n } from '@/components/i18n-provider';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { EmptyState, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
+import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { DeleteButton, EmptyState, Field, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import type { WorkspaceList } from '@/lib/workspace-data';
+import { cn } from '@/lib/utils';
 
 export default function ListsPage() {
-  const { data, updateData, loading } = useWorkspace();
+  return <Suspense fallback={<PageSkeleton />}><ListsView /></Suspense>;
+}
+
+function ListsView() {
+  const { t } = useI18n();
+  const { data, loading, remove, listItems } = useWorkspace();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(data.lists[0]?.id ?? null);
-  const [addingList, setAddingList] = useState(false);
-  const [listTitle, setListTitle] = useState('');
-  const [category, setCategory] = useState('');
+  const [creating, setCreating] = useState(false);
   const [itemText, setItemText] = useState('');
 
   const lists = useMemo(() => data.lists.filter((list) =>
     `${list.title} ${list.category} ${list.items.map((item) => item.text).join(' ')}`.toLowerCase().includes(query.toLowerCase()),
   ), [data.lists, query]);
-  const selected = lists.find((list) => list.id === selectedId) ?? lists[0] ?? null;
+  const selected = data.lists.find((list) => list.id === searchParams.get('id')) ?? lists[0] ?? null;
+  const select = (id: string | null) => router.replace(id ? `/lists?id=${id}` : '/lists', { scroll: false });
 
-  function createList(event: FormEvent<HTMLFormElement>) {
+  async function addItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = listTitle.trim();
-    if (!trimmed) return;
-    const list: WorkspaceList = { id: `list-${Date.now()}`, title: trimmed, category: category.trim() || 'Uncategorized', items: [] };
-    updateData((current) => ({ ...current, lists: [list, ...current.lists] }));
-    setSelectedId(list.id);
-    setListTitle('');
-    setCategory('');
-    setAddingList(false);
-  }
-
-  function addItem(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = itemText.trim();
-    if (!trimmed || !selected) return;
-    const item = { id: `item-${Date.now()}`, text: trimmed, done: false };
-    updateData((current) => ({ ...current, lists: current.lists.map((list) => list.id === selected.id ? { ...list, items: [...list.items, item] } : list) }));
+    const text = itemText.trim();
+    if (!text || !selected) return;
     setItemText('');
+    await listItems.add(selected.id, text);
   }
 
   if (loading) return <PageSkeleton />;
 
+  const newListButton = <Button onClick={() => setCreating(true)}><Plus />{t('lists.new')}</Button>;
+
   return (
     <div>
-      <PageHeader title="Lists" description="Organize checklists, ideas, and structured content." action={<Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setAddingList((value) => !value)}><Plus className="h-3.5 w-3.5" />New list</Button>} />
-      {addingList && <form onSubmit={createList} className="mb-4 flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row"><label htmlFor="list-title" className="sr-only">List title</label><input id="list-title" autoFocus value={listTitle} onChange={(event) => setListTitle(event.target.value)} placeholder="List title…" className="h-8 min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground" /><label htmlFor="list-category" className="sr-only">Category</label><input id="list-category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Category" className="h-8 rounded-md border border-input bg-background px-2 text-xs" /><Button type="submit" size="sm" className="h-8 text-xs">Create list</Button></form>}
+      <PageHeader title={t('lists.title')} description={t('lists.description')} action={newListButton} />
 
-      <div className="grid min-h-[420px] overflow-hidden rounded-lg border border-border bg-card md:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="border-b border-border md:border-b-0 md:border-r" aria-label="List collection">
-          <div className="border-b border-border p-2.5"><SearchInput value={query} onChange={setQuery} placeholder="Search lists and items" /></div>
-          <div className="max-h-[240px] overflow-y-auto p-1.5 md:max-h-[520px]">
-            {lists.map((list) => (
-              <button key={list.id} onClick={() => setSelectedId(list.id)} aria-pressed={selected?.id === list.id} className={`w-full rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent ${selected?.id === list.id ? 'bg-accent' : ''}`}>
-                <span className="flex items-center gap-2"><ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate text-xs font-medium">{list.title}</span></span>
-                <span className="mt-1 flex items-center justify-between pl-[22px] text-[10px] text-muted-foreground"><span>{list.category}</span><span>{list.items.filter((item) => item.done).length}/{list.items.length}</span></span>
-              </button>
-            ))}
-          </div>
-        </aside>
-        <section className="flex min-h-[350px] flex-col">
+      {data.lists.length === 0 ? (
+        <EmptyState icon={ListChecks} title={t('lists.empty')} description={t('lists.emptyDesc')} action={<Button variant="outline" onClick={() => setCreating(true)}><Plus />{t('lists.new')}</Button>} />
+      ) : (
+        <Card className="grid overflow-hidden md:h-[calc(100vh-13rem)] md:min-h-[520px] md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col border-b md:border-b-0 md:border-r">
+            <div className="border-b p-3"><SearchInput value={query} onChange={setQuery} placeholder={t('lists.search')} className="sm:w-full" /></div>
+            <div className="max-h-64 flex-1 space-y-0.5 overflow-y-auto p-2 md:max-h-none">
+              {lists.map((list) => {
+                const done = list.items.filter((item) => item.done).length;
+                return (
+                  <button key={list.id} type="button" onClick={() => select(list.id)} aria-current={selected?.id === list.id}
+                    className={cn('w-full rounded-md px-3 py-2 text-left transition-all duration-200 hover:bg-accent active:scale-[0.99]', selected?.id === list.id && 'bg-accent')}>
+                    <span className="flex items-center gap-2"><ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate text-sm font-medium">{list.title}</span></span>
+                    <span className="mt-0.5 flex items-center justify-between pl-[22px] text-xs text-muted-foreground"><span>{list.category}</span><span className="tabular-nums">{done}/{list.items.length}</span></span>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
           {selected ? (
-            <>
-              <header className="flex items-center justify-between border-b border-border px-4 py-3"><div><p className="text-sm font-medium">{selected.title}</p><p className="mt-0.5 text-[10px] text-muted-foreground">{selected.category} · {selected.items.length} items</p></div><Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" aria-label="Delete list" onClick={() => { updateData((current) => ({ ...current, lists: current.lists.filter((list) => list.id !== selected.id) })); setSelectedId(null); }}><Trash2 className="h-3.5 w-3.5" /></Button></header>
-              <div className="flex-1 p-2">
-                {selected.items.map((item) => <div key={item.id} className="group flex items-center gap-2 rounded-md px-2 py-2 hover:bg-accent/70">
-                  <button type="button" aria-label={`${item.done ? 'Uncheck' : 'Check'} ${item.text}`} aria-pressed={item.done} onClick={() => updateData((current) => ({ ...current, lists: current.lists.map((list) => list.id === selected.id ? { ...list, items: list.items.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry) } : list) }))} className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${item.done ? 'border-foreground bg-foreground text-background' : 'border-muted-foreground text-transparent'}`}>{item.done && <Check className="h-3 w-3" />}</button>
-                  <span className={`flex-1 text-xs ${item.done ? 'text-muted-foreground line-through' : ''}`}>{item.text}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100" aria-label={`Delete ${item.text}`} onClick={() => updateData((current) => ({ ...current, lists: current.lists.map((list) => list.id === selected.id ? { ...list, items: list.items.filter((entry) => entry.id !== item.id) } : list) }))}><Trash2 className="h-3 w-3" /></Button>
-                </div>)}
-                {selected.items.length === 0 && <div className="px-2 py-7"><EmptyState title="A fresh list" description="Add checklist items or plain text to get started." /></div>}
+            <section className="flex min-h-0 flex-col">
+              <header className="flex items-center justify-between gap-3 border-b px-5 py-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{selected.title}</p>
+                  <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary">{selected.category}</Badge>
+                    {t('lists.items', { done: selected.items.filter((item) => item.done).length, total: selected.items.length })}
+                  </p>
+                </div>
+                <DeleteButton name={selected.title} onConfirm={() => { void remove('lists', selected.id); select(null); }} />
+              </header>
+              <div className="flex-1 space-y-0.5 overflow-y-auto p-3">
+                {selected.items.map((item) => (
+                  <div key={item.id} className="row-enter group flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+                    <Checkbox id={`item-${item.id}`} checked={item.done} onCheckedChange={(checked) => void listItems.update(selected.id, item.id, { done: checked === true })} />
+                    <label htmlFor={`item-${item.id}`} className={cn('flex-1 cursor-pointer text-sm', item.done && 'text-muted-foreground line-through')}>{item.text}</label>
+                    <Button variant="ghost" size="icon-sm" className="h-7 w-7 text-muted-foreground opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                      aria-label={`${t('common.delete')}: ${item.text}`} onClick={() => void listItems.remove(selected.id, item.id)}><X /></Button>
+                  </div>
+                ))}
+                {selected.items.length === 0 && <p className="px-2 py-10 text-center text-sm text-muted-foreground">{t('lists.emptyList')}</p>}
               </div>
-              <form onSubmit={addItem} className="flex items-center gap-2 border-t border-border p-3"><Plus className="h-3.5 w-3.5 text-muted-foreground" /><label htmlFor="new-list-item" className="sr-only">Add a list item</label><input id="new-list-item" value={itemText} onChange={(event) => setItemText(event.target.value)} placeholder="Add an item…" className="h-8 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground" /><Button type="submit" variant="outline" size="sm" className="h-7 text-[10px]">Add item</Button></form>
-            </>
-          ) : <div className="flex flex-1 items-center justify-center p-5"><EmptyState title="No lists found" description={data.lists.length ? 'Try another search, or create a new list.' : 'Create a list to collect checklists and structured content.'} action={!data.lists.length && <Button size="sm" variant="outline" onClick={() => setAddingList(true)}>Create a list</Button>} /></div>}
-        </section>
-      </div>
+              <form onSubmit={addItem} className="flex gap-2 border-t p-3">
+                <Input value={itemText} onChange={(event) => setItemText(event.target.value)} placeholder={t('lists.addItem')} aria-label={t('lists.addItem')} />
+                <Button type="submit" variant="secondary" disabled={!itemText.trim()}><Plus />{t('common.add')}</Button>
+              </form>
+            </section>
+          ) : (
+            <div className="flex items-center justify-center p-6 text-sm text-muted-foreground">{t('shell.noResults')}</div>
+          )}
+        </Card>
+      )}
+
+      <CreateListDialog open={creating} onClose={() => setCreating(false)} onCreated={select} />
     </div>
+  );
+}
+
+function CreateListDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: string) => void }) {
+  const { t } = useI18n();
+  const { create } = useWorkspace();
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!title.trim()) return;
+    const list = await create('lists', { title: title.trim(), category: category.trim() || 'General' });
+    if (!list) return;
+    setTitle('');
+    setCategory('');
+    onCreated(list.id);
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{t('lists.new')}</DialogTitle></DialogHeader>
+        <form onSubmit={submit} className="space-y-5">
+          <Field label={t('common.title')} htmlFor="list-title">
+            <Input id="list-title" autoFocus value={title} onChange={(event) => setTitle(event.target.value)} required />
+          </Field>
+          <Field label={t('lists.category')} htmlFor="list-category">
+            <Input id="list-category" value={category} onChange={(event) => setCategory(event.target.value)} placeholder="General" />
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+            <Button type="submit" disabled={!title.trim()}>{t('common.create')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
