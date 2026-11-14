@@ -50,7 +50,7 @@ export default function TagsPage() {
         <EmptyState icon={Hash} title={t('tags.empty')} description={t('tags.emptyDesc')} />
       ) : (
         <>
-          <div className="mb-8 flex flex-wrap items-baseline gap-x-4 gap-y-2 rounded-xl border bg-card p-6">
+          <div className="mb-8 flex flex-wrap items-baseline gap-x-4 gap-y-2 rounded-xl bg-card shadow-sm p-6">
             {visible.map((tag) => (
               <Link key={tag.id} href={`/tags/${encodeURIComponent(tag.name)}`}
                 className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
@@ -66,7 +66,7 @@ export default function TagsPage() {
                 return acc;
               }, {});
               return (
-                <div key={tag.id} className="card-hover group flex items-center gap-3 rounded-xl border bg-card p-4">
+                <div key={tag.id} className="card-hover group flex items-center gap-3 rounded-xl bg-card shadow-sm p-4">
                   <Link href={`/tags/${encodeURIComponent(tag.name)}`} className="min-w-0 flex-1">
                     <p className="flex items-center gap-1.5 truncate font-medium"><Hash className="h-4 w-4 text-muted-foreground" />{tag.name}</p>
                     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">

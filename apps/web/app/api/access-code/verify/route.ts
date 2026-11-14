@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 /** Step 2: the code from Telegram. Body {code}; with {resend: true} a new code is sent instead. */
 export async function POST(request: Request) {
   const accessCode = configuredAccessCode();
-  const challengeId = readPending(cookies().get(pendingCookieName)?.value);
+  const challengeId = readPending((await cookies()).get(pendingCookieName)?.value);
   if (!accessCode || !challengeId) {
     return NextResponse.json({ error: 'Login expired. Enter the access code again.', expired: true }, { status: 401 });
   }

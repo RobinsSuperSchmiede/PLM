@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from 'd3-force';
 import { Hash, Maximize, Minus, Network, Plus, X } from 'lucide-react';
 
 import { DotLoader } from '@/components/dot-loader';
@@ -13,13 +12,14 @@ import { Switch } from '@/components/ui/switch';
 import { EmptyState, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import { allEntities, contentTypes, entityColors, entityIcons, entityLabelKeys, wikiLinks } from '@/lib/entities';
+import type { LayoutRequest, LayoutResponse } from '@/lib/graph-layout.worker';
 import type { EntityType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type NodeKind = EntityType | 'tag';
-type GraphNode = SimulationNodeDatum & { id: string; kind: NodeKind; entityId: string; label: string; href: string; projectId: string | null; degree: number };
+type GraphNode = { x?: number; y?: number; id: string; kind: NodeKind; entityId: string; label: string; href: string; projectId: string | null; degree: number };
 type EdgeKind = 'link' | 'wiki' | 'project' | 'tag';
-type GraphEdge = SimulationLinkDatum<GraphNode> & { id: string; kind: EdgeKind; source: string | GraphNode; target: string | GraphNode };
+type GraphEdge = { id: string; kind: EdgeKind; source: string | GraphNode; target: string | GraphNode };
 type View = { x: number; y: number; k: number };
 
 const projectPalette = ['hsl(217 91% 60%)', 'hsl(152 65% 45%)', 'hsl(0 80% 60%)', 'hsl(38 95% 55%)', 'hsl(280 65% 62%)', 'hsl(190 75% 45%)', 'hsl(330 75% 60%)', 'hsl(90 55% 45%)'];
@@ -44,7 +44,10 @@ export default function GraphPage() {
   const isStatic = useRef(false);
   const [layouting, setLayouting] = useState(false);
   const svg = useRef<SVGSVGElement>(null);
-  const simulation = useRef<Simulation<GraphNode, GraphEdge> | null>(null);
+  // The physics run in a web worker; these are the nodes and edges currently drawn, with the positions it reported.
+  const worker = useRef<Worker | null>(null);
+  const generation = useRef(0);
+  const drawn = useRef<{ nodes: GraphNode[]; edges: GraphEdge[] }>({ nodes: [], edges: [] });
   const positions = useRef(new Map<string, { x: number; y: number }>());
   const drag = useRef<{ mode: 'pan' | 'node'; node?: GraphNode; startX: number; startY: number; view: View; moved: boolean } | null>(null);
 
@@ -90,56 +93,70 @@ export default function GraphPage() {
     return { nodes: list, edges: [...unique.values()] };
   }, [data, links, projectEdges, showOrphans, showTags, t, tagAssignments, tags, types]);
 
+  useEffect(() => {
+    const instance = new Worker(new URL('../../lib/graph-layout.worker.ts', import.meta.url));
+    worker.current = instance;
+    return () => {
+      instance.terminate();
+      worker.current = null;
+    };
+  }, []);
+
   // (Re)start the force simulation whenever the graph changes; known nodes keep their positions.
   useEffect(() => {
+    const instance = worker.current;
+    if (!instance) return;
+    const post = (message: LayoutRequest) => instance.postMessage(message);
     const nodes = graph.nodes.map((node) => ({ ...node, ...(positions.current.get(node.id) ?? {}) }));
-    const edges = graph.edges.map((edge) => ({ ...edge }));
-    simulation.current?.stop();
-    const sim = forceSimulation<GraphNode, GraphEdge>(nodes)
-      .force('link', forceLink<GraphNode, GraphEdge>(edges).id((node) => node.id).distance((edge) => (edge.kind === 'tag' ? 70 : edge.kind === 'project' ? 90 : 60)).strength(0.5))
-      .force('charge', forceManyBody().strength(-220))
-      .force('center', forceCenter(0, 0))
-      .force('x', forceX(0).strength(0.04))
-      .force('y', forceY(0).strength(0.04))
-      .force('collide', forceCollide<GraphNode>().radius((node) => radius(node) + 6));
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const edges = graph.edges.map((edge) => ({ ...edge, source: byId.get(endpoint(edge.source))!, target: byId.get(endpoint(edge.target))! })).filter((edge) => edge.source && edge.target);
+    const current = generation.current + 1;
+    generation.current = current;
+    // Large graphs are laid out once instead of animating every tick.
+    const once = nodes.length > 200;
+    isStatic.current = once;
+    if (once) setLayouting(true);
+    if (!nodes.length) drawn.current = { nodes, edges };
+
     let frame = 0;
-    const remember = () => {
-      for (const node of nodes) positions.current.set(node.id, { x: node.x ?? 0, y: node.y ?? 0 });
-    };
-    isStatic.current = nodes.length > 200;
-    let layoutTimer = 0;
-    if (isStatic.current) {
-      sim.stop();
-      setLayouting(true);
-      // Computed after the loader is painted, so the page never looks frozen.
-      layoutTimer = window.setTimeout(() => {
-      // Fewer iterations than d3's default are enough for a readable layout of large graphs.
-      sim.tick(Math.min(220, Math.ceil(Math.log(sim.alphaMin()) / Math.log(1 - sim.alphaDecay()))));
-      remember();
-      setFrame((value) => value + 1);
-      // Zoom so the whole graph fits into the view.
-      const rect = svg.current?.getBoundingClientRect();
-      if (rect && nodes.length) {
-        const xs = nodes.map((node) => node.x ?? 0);
-        const ys = nodes.map((node) => node.y ?? 0);
-        const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-        const k = Math.min(1.2, Math.max(0.2, Math.min(rect.width / (maxX - minX + 80), rect.height / (maxY - minY + 80))));
-        setView({ k, x: rect.width / 2 - ((minX + maxX) / 2) * k, y: rect.height / 2 - ((minY + maxY) / 2) * k });
+    const onMessage = ({ data: message }: MessageEvent<LayoutResponse>) => {
+      if (message.generation !== current) return;
+      for (let index = 0; index < nodes.length; index += 1) {
+        const node = nodes[index];
+        node.x = message.positions[index * 2];
+        node.y = message.positions[index * 2 + 1];
+        positions.current.set(node.id, { x: node.x, y: node.y });
       }
-      setLayouting(false);
-      }, 30);
-    } else {
-      sim.on('tick', () => {
-        remember();
-        cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => setFrame((value) => value + 1));
-      });
-    }
-    simulation.current = sim;
-    return () => {
-      sim.stop();
-      window.clearTimeout(layoutTimer);
+      // The previous graph stays on screen until the new one has positions.
+      drawn.current = { nodes, edges };
       cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setFrame((value) => value + 1));
+      if (once && message.settled) {
+        // Zoom so the whole graph fits into the view.
+        const rect = svg.current?.getBoundingClientRect();
+        if (rect && nodes.length) {
+          const xs = nodes.map((node) => node.x ?? 0);
+          const ys = nodes.map((node) => node.y ?? 0);
+          const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+          const k = Math.min(1.2, Math.max(0.2, Math.min(rect.width / (maxX - minX + 80), rect.height / (maxY - minY + 80))));
+          setView({ k, x: rect.width / 2 - ((minX + maxX) / 2) * k, y: rect.height / 2 - ((minY + maxY) / 2) * k });
+        }
+        setLayouting(false);
+      }
+    };
+    instance.addEventListener('message', onMessage);
+    post({
+      type: 'init',
+      generation: current,
+      once,
+      nodes: nodes.map((node) => ({ id: node.id, radius: radius(node), x: node.x, y: node.y })),
+      edges: edges.map((edge) => ({ source: edge.source.id, target: edge.target.id, distance: edge.kind === 'tag' ? 70 : edge.kind === 'project' ? 90 : 60 })),
+    });
+    return () => {
+      instance.removeEventListener('message', onMessage);
+      post({ type: 'stop' });
+      cancelAnimationFrame(frame);
+      setLayouting(false);
     };
   }, [graph]);
 
@@ -168,8 +185,7 @@ export default function GraphPage() {
     return () => element.removeEventListener('wheel', onWheel);
   }, [loading]);
 
-  const nodes = simulation.current?.nodes() ?? [];
-  const edges = (simulation.current?.force('link') as ReturnType<typeof forceLink<GraphNode, GraphEdge>> | undefined)?.links() ?? [];
+  const { nodes, edges } = drawn.current;
   const neighbors = useMemo(() => {
     if (!selected) return null;
     const set = new Set([selected]);
@@ -199,7 +215,7 @@ export default function GraphPage() {
         const active = neighbors ? neighbors.has(source.id) && neighbors.has(target.id) && (source.id === selected || target.id === selected) : false;
         return (
           <line key={edge.id} x1={source.x} y1={source.y} x2={target.x} y2={target.y}
-            stroke={active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))'}
+            stroke={active ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground) / var(--muted-foreground-a))'}
             strokeOpacity={neighbors ? (active ? 0.8 : 0.06) : edge.kind === 'tag' ? 0.18 : 0.32}
             strokeWidth={(active ? 1.6 : 1) / Math.sqrt(view.k)}
             strokeDasharray={edge.kind === 'project' ? '3 3' : edge.kind === 'wiki' ? '1 2' : undefined} />
@@ -213,13 +229,13 @@ export default function GraphPage() {
         return (
           <g key={node.id} data-node={node.id} transform={`translate(${node.x ?? 0},${node.y ?? 0})`} className="cursor-pointer" opacity={dimmed ? 0.15 : 1} style={{ transition: 'opacity 200ms' }}>
             {node.kind === 'tag' ? (
-              <rect x={-r} y={-r} width={r * 2} height={r * 2} rx={2} transform="rotate(45)" fill="hsl(var(--card))" stroke={color(node)} strokeWidth={1.5} />
+              <rect x={-r} y={-r} width={r * 2} height={r * 2} rx={2} transform="rotate(45)" fill="hsl(var(--background))" stroke={color(node)} strokeWidth={1.5} />
             ) : (
-              <circle r={r} fill={color(node)} stroke="hsl(var(--card))" strokeWidth={node.id === selected ? 3 : 1.5} />
+              <circle r={r} fill={color(node)} stroke="hsl(var(--background))" strokeWidth={node.id === selected ? 3 : 1.5} />
             )}
             {node.id === selected && <circle r={r + 5} fill="none" stroke={color(node)} strokeOpacity={0.5} strokeWidth={1.5} />}
             {showLabel && (
-              <text y={r + 12} textAnchor="middle" fontSize={11 / Math.sqrt(view.k)} fill="hsl(var(--foreground))" fillOpacity={0.85} className="pointer-events-none" style={{ paintOrder: 'stroke', stroke: 'hsl(var(--card))', strokeWidth: 3 }}>
+              <text y={r + 12} textAnchor="middle" fontSize={11 / Math.sqrt(view.k)} fill="hsl(var(--foreground))" fillOpacity={0.85} className="pointer-events-none" style={{ paintOrder: 'stroke', stroke: 'hsl(var(--background))', strokeWidth: 3 }}>
                 {node.label.length > 28 ? `${node.label.slice(0, 27)}…` : node.label}
               </text>
             )}
@@ -229,6 +245,10 @@ export default function GraphPage() {
     </>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [frame, neighbors, matches, selected, colorBy, projectColors, view.k]);
+
+  function send(message: LayoutRequest) {
+    worker.current?.postMessage(message);
+  }
 
   function focusOn(node: GraphNode | undefined) {
     const element = svg.current;
@@ -254,16 +274,16 @@ export default function GraphPage() {
         action={<SearchInput value={query} onChange={(value) => { setQuery(value); }} placeholder={t('graph.search')} className="sm:w-72" />} />
 
       <div className="grid gap-4 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="space-y-5 rounded-xl border bg-card p-4 text-sm">
+        <aside className="space-y-5 rounded-xl bg-card shadow-sm p-4 text-sm">
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('graph.show')}</p>
+            <p className="ds-label">{t('graph.show')}</p>
             <div className="flex flex-wrap gap-1.5 xl:flex-col xl:gap-1">
               {contentTypes.map((type) => {
                 const Icon = entityIcons[type];
                 const active = types.includes(type);
                 return (
                   <button key={type} type="button" aria-pressed={active} onClick={() => setTypes(active ? types.filter((entry) => entry !== type) : [...types, type])}
-                    className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-all duration-200', active ? 'border-border bg-accent text-foreground' : 'border-transparent text-muted-foreground opacity-60 hover:opacity-100')}>
+                    className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-[background-color,border-color,color,transform] duration-200', active ? 'border-border bg-accent text-foreground' : 'border-transparent text-muted-foreground opacity-60 hover:opacity-100')}>
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: entityColors[type] }} />
                     <Icon className="h-3.5 w-3.5" />
                     <span className="flex-1">{t(entityLabelKeys[type])}</span>
@@ -278,11 +298,11 @@ export default function GraphPage() {
             <ToggleRow label={t('graph.orphans')} checked={showOrphans} onChange={setShowOrphans} />
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t('graph.groupBy')}</p>
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            <p className="ds-label">{t('graph.groupBy')}</p>
+            <div className="grid grid-cols-2 gap-0.5 rounded-full ds-glass p-[3px]">
               {(['type', 'project'] as const).map((value) => (
                 <button key={value} type="button" aria-pressed={colorBy === value} onClick={() => setColorBy(value)}
-                  className={cn('rounded-md px-2 py-1 text-xs font-medium transition-all', colorBy === value ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+                  className={cn('h-[22px] rounded-full px-2 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds', colorBy === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground')}>
                   {value === 'type' ? t('graph.groupType') : t('graph.groupProject')}
                 </button>
               ))}
@@ -297,9 +317,9 @@ export default function GraphPage() {
           <p className="text-xs leading-relaxed text-muted-foreground">{t('graph.hint')}</p>
         </aside>
 
-        <div className="relative h-[calc(100vh-13rem)] min-h-[520px] overflow-hidden rounded-xl border bg-card">
+        <div className="relative h-[calc(100vh-13rem)] min-h-[520px] overflow-hidden rounded-xl bg-card shadow-sm">
           {layouting && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-[1px]"><DotLoader size={40} className="text-brand" label={t('common.loading')} /></div>
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/60 backdrop-blur-[1px]"><DotLoader size={40} className="text-muted-foreground" label={t('common.loading')} /></div>
           )}
           {graph.nodes.length === 0 ? (
             <EmptyState icon={Network} title={t('graph.empty')} description={t('graph.emptyDesc')} className="h-full rounded-none border-0" />
@@ -314,11 +334,7 @@ export default function GraphPage() {
               const id = (event.target as Element).closest('[data-node]')?.getAttribute('data-node');
               const node = id ? nodes.find((entry) => entry.id === id) : undefined;
               drag.current = { mode: node ? 'node' : 'pan', node, startX: event.clientX, startY: event.clientY, view, moved: false };
-              if (node && !isStatic.current) {
-                node.fx = node.x;
-                node.fy = node.y;
-                simulation.current?.alphaTarget(0.2).restart();
-              }
+              if (node && !isStatic.current) send({ type: 'drag', id: node.id, x: node.x ?? 0, y: node.y ?? 0 });
             }}
             onPointerMove={(event) => {
               const state = drag.current;
@@ -328,32 +344,23 @@ export default function GraphPage() {
                 setView({ ...state.view, x: state.view.x + event.clientX - state.startX, y: state.view.y + event.clientY - state.startY });
               } else if (state.node) {
                 const point = toWorld(event.clientX, event.clientY);
-                if (isStatic.current) {
-                  state.node.x = point.x;
-                  state.node.y = point.y;
-                  positions.current.set(state.node.id, point);
-                  setFrame((value) => value + 1);
-                } else {
-                  state.node.fx = point.x;
-                  state.node.fy = point.y;
-                }
+                // Moved here at once so the node follows the pointer; in animated graphs the worker pulls its neighbours along.
+                state.node.x = point.x;
+                state.node.y = point.y;
+                positions.current.set(state.node.id, point);
+                setFrame((value) => value + 1);
+                if (!isStatic.current) send({ type: 'drag', id: state.node.id, x: point.x, y: point.y });
               }
             }}
             onPointerCancel={() => {
-              if (drag.current?.node) {
-                drag.current.node.fx = null;
-                drag.current.node.fy = null;
-              }
+              if (drag.current?.node) send({ type: 'release', id: drag.current.node.id });
               drag.current = null;
-              simulation.current?.alphaTarget(0);
             }}
             onPointerUp={() => {
               const state = drag.current;
               drag.current = null;
               if (state?.node) {
-                state.node.fx = null;
-                state.node.fy = null;
-                simulation.current?.alphaTarget(0);
+                send({ type: 'release', id: state.node.id });
                 if (!state.moved) setSelected(state.node.id === selected ? null : state.node.id);
               } else if (state && !state.moved) {
                 setSelected(null);
@@ -381,7 +388,7 @@ export default function GraphPage() {
           </div>
 
           {matches && matches.size > 0 && !selected && (
-            <div className="absolute left-3 top-3 max-h-60 w-64 overflow-y-auto rounded-lg border bg-background/90 p-1 shadow-lg backdrop-blur">
+            <div className="absolute left-3 top-3 max-h-60 w-64 overflow-y-auto rounded-lg ds-menu p-1">
               {nodes.filter((node) => matches.has(node.id)).slice(0, 12).map((node) => (
                 <button key={node.id} type="button" onClick={() => focusOn(node)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(node) }} /><span className="truncate">{node.label}</span>
@@ -391,7 +398,7 @@ export default function GraphPage() {
           )}
 
           {selectedNode && (
-            <div className="absolute right-3 top-3 w-72 rounded-xl border bg-background/95 p-4 shadow-xl backdrop-blur duration-200 animate-in fade-in slide-in-from-right-2">
+            <div className="absolute right-3 top-3 w-72 rounded-xl ds-menu p-4 duration-200 animate-in fade-in slide-in-from-right-2">
               <div className="flex items-start gap-2">
                 <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color(selectedNode) }} />
                 <div className="min-w-0 flex-1">

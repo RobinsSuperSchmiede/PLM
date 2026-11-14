@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { CopyButton, PageSkeleton } from '@/components/workspace-ui';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, peek } from '@/lib/api';
 import type { TelegramSettings as Telegram, TelegramUpdate } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +29,7 @@ function timezones(): string[] {
 
 export function TelegramSettings() {
   const { t } = useI18n();
-  const [telegram, setTelegram] = useState<Telegram | null>(null);
+  const [telegram, setTelegram] = useState<Telegram | null>(() => peek<Telegram>('/telegram') ?? null);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ export function TelegramSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4" />{t('settings.telegramTitle')}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">{t('settings.telegramTitle')}</CardTitle>
           <CardDescription>{t('settings.telegramDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -160,7 +160,7 @@ export function TelegramSettings() {
                 <div className="space-y-1.5">
                   <p className="text-xs text-muted-foreground">{t('settings.orSend', { bot: telegram.bot_username ?? '' })}</p>
                   <div className="flex items-center gap-2">
-                    <code className="truncate rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs">/start {telegram.link_code}</code>
+                    <code className="truncate rounded-md bg-muted px-3 py-1.5 font-mono text-xs">/start {telegram.link_code}</code>
                     <CopyButton value={`/start ${telegram.link_code}`} />
                   </div>
                 </div>

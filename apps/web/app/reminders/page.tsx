@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeleteButton, EmptyState, Field, PageHeader, PageSkeleton } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 import { addDays, relativeDay, toDateTimeKey } from '@/lib/dates';
 import type { Reminder, RepeatRule, TelegramSettings } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -42,7 +42,7 @@ export default function RemindersPage() {
   const { t } = useI18n();
   const { data, loading } = useWorkspace();
   const [editing, setEditing] = useState<Reminder | 'new' | null>(null);
-  const [telegram, setTelegram] = useState<TelegramSettings | null>(null);
+  const [telegram, setTelegram] = useState<TelegramSettings | null>(() => peek<TelegramSettings>('/telegram') ?? null);
 
   useEffect(() => {
     api.get<TelegramSettings>('/telegram').then(setTelegram).catch(() => setTelegram(null));
@@ -64,7 +64,7 @@ export default function RemindersPage() {
 
       {telegram && (ready ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-success" /></span>
+          <span className="relative flex h-2 w-2"><span className="relative inline-flex h-2 w-2 rounded-full bg-success" /></span>
           {t('reminders.telegramReady', { name: telegram.chat_name ?? 'Telegram', bot: telegram.bot_username ?? 'bot' })}
           <span className="hidden sm:inline">· {t('reminders.timezoneHint', { timezone: telegram.timezone })}</span>
         </p>
@@ -131,7 +131,7 @@ function QuickAdd() {
             type="button"
             onClick={() => setWhen(preset.value)}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs transition-all duration-200 hover:border-foreground/20 hover:bg-accent active:scale-95',
+              'rounded-full border px-3 py-1 text-xs transition-[background-color,border-color,color,transform] duration-200 hover:border-foreground/20 hover:bg-accent active:scale-95',
               when === preset.value ? 'border-foreground/30 bg-accent font-medium text-foreground' : 'text-muted-foreground',
             )}
           >

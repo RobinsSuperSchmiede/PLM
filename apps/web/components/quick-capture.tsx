@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { entityHref, entityLabelKeys } from '@/lib/entities';
 import type { EntityType, Project, TelegramLogEntry, TelegramSettings } from '@/lib/types';
@@ -51,7 +51,7 @@ export function TelegramMenu() {
   const { t, language } = useI18n();
   const { data, create, setTags } = useWorkspace();
   const [open, setOpen] = useState(false);
-  const [telegram, setTelegram] = useState<TelegramSettings | null>(null);
+  const [telegram, setTelegram] = useState<TelegramSettings | null>(() => peek<TelegramSettings>('/telegram') ?? null);
   const [recent, setRecent] = useState<TelegramLogEntry[]>([]);
   const [mode, setMode] = useState<Mode>('send');
   const [alsoSend, setAlsoSend] = useState(false);
@@ -118,9 +118,9 @@ export function TelegramMenu() {
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="relative" aria-label={`${t('nav.telegram')} – ${connected ? t('ui.telegramConnected') : t('ui.telegramOffline')}`}>
+            <Button variant="outline" size="icon" className="ds-float relative h-8 w-8" aria-label={`${t('nav.telegram')} – ${connected ? t('ui.telegramConnected') : t('ui.telegramOffline')}`}>
               <Send />
-              <span className={cn('absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-background', connected ? 'bg-success' : 'bg-muted-foreground/50')} aria-hidden="true" />
+              <span className={cn('absolute right-0 top-0 h-2 w-2 rounded-full ring-2 ring-background', connected ? 'bg-success' : 'bg-muted-foreground/50')} aria-hidden="true" />
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
@@ -129,7 +129,7 @@ export function TelegramMenu() {
       <PopoverContent align="end" className="w-[min(26rem,calc(100vw-1.5rem))] p-0">
         <div className="flex items-center gap-3 border-b px-4 py-3">
           <span className="relative flex h-2.5 w-2.5">
-            {connected && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-50" />}
+            
             <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full', connected ? 'bg-success' : 'bg-muted-foreground/40')} />
           </span>
           <div className="min-w-0 flex-1">
@@ -146,7 +146,7 @@ export function TelegramMenu() {
         </div>
 
         <div className="space-y-3 p-4">
-          <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label={t('ui.captureAs')}>
+          <div className="grid grid-cols-4 gap-0.5 rounded-full ds-glass p-[3px]" role="radiogroup" aria-label={t('ui.captureAs')}>
             {modes.map(({ value, icon: Icon }) => (
               <button
                 key={value}
@@ -156,8 +156,8 @@ export function TelegramMenu() {
                 disabled={value === 'send' && !connected}
                 onClick={() => setMode(value)}
                 className={cn(
-                  'flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-200 disabled:opacity-40',
-                  mode === value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  'flex h-[22px] items-center justify-center gap-1.5 rounded-full px-2 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds disabled:opacity-40',
+                  mode === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />

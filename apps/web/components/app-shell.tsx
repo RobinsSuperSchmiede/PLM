@@ -5,14 +5,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Archive, BellRing, BookOpen, Bot, CalendarDays, CheckSquare2, Code2, Database, FileText, Folder, FolderKanban, Hash, Home, Image as ImageIcon, LifeBuoy, Lightbulb, ListTodo, type LucideIcon, Menu, Network, NotebookPen, PanelLeftClose, PanelLeftOpen, Paperclip, Search, Send, Settings, Users,
 } from 'lucide-react';
-import { Suspense, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TelegramMenu } from '@/components/quick-capture';
-import { GlobalSearch } from '@/components/global-search';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -67,24 +66,35 @@ const mobileNav: NavItem[] = [
   { key: 'nav.calendar', href: '/calendar', icon: CalendarDays },
   { key: 'nav.menu', href: '#menu', icon: Menu },
 ];
-
 /** Pages that lay out their own explorer + content panes edge to edge (no page padding). */
 const fullBleed = ['/notes', '/files', '/images', '/docs', '/database'];
 
 const isActive = (pathname: string, href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
+const pinnedStorageKey = 'anamnesies.sidebarPinned';
+
+// The command palette is loaded the first time it opens.
+const GlobalSearch = dynamic(() => import('@/components/global-search').then((module) => module.GlobalSearch), { ssr: false });
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  // The clicked target counts as active right away, so the rail reacts before the page has rendered.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const activePath = pendingHref ?? pathname;
   const { t } = useI18n();
   const { data, error, reload } = useWorkspace();
-  const [collapsed, setCollapsed] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteUsed, setPaletteUsed] = useState(false);
   const [modifier, setModifier] = useState('Ctrl');
+  const hoverTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     setModifier(/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl');
+    try { setPinned(window.localStorage.getItem(pinnedStorageKey) === 'true'); } catch { /* storage unavailable */ }
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -95,80 +105,120 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  useEffect(() => setMobileOpen(false), [pathname]);
+  useEffect(() => { setMobileOpen(false); setHovered(false); setPendingHref(null); }, [pathname]);
+
+  // Dev server only: compile every page once in the background, so the first visit of a page does not
+  // wait for the compiler. Production builds are compiled ahead of time and prefetched by <Link>.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      for (const item of allNavItems) {
+        if (cancelled) return;
+        if (item.href === pathname) continue;
+        await fetch(item.href, { cache: 'no-store' }).catch(() => undefined);
+        router.prefetch(item.href);
+      }
+    }, 1500);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { if (paletteOpen) setPaletteUsed(true); }, [paletteOpen]);
+
+  const togglePinned = () => {
+    setPinned((value) => {
+      const next = !value;
+      try { window.localStorage.setItem(pinnedStorageKey, String(next)); } catch { /* storage unavailable */ }
+      return next;
+    });
+    setHovered(false);
+  };
+
+  // Opens with a short delay so passing the mouse over the rail does not flash the panel.
+  const hover = (value: boolean) => {
+    window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => setHovered(value), value ? 90 : 180);
+  };
 
   const openTasks = data.tasks.filter((task) => task.status !== 'done').length;
+  const expanded = pinned || hovered;
 
-  const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className={cn('flex h-14 shrink-0 items-center gap-2 border-b border-transparent px-4', collapsed && 'lg:justify-center lg:px-0')}>
-        <Link href="/" className={cn('min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', collapsed && 'lg:hidden')}>
-          <BrandWord />
-        </Link>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="hidden shrink-0 text-muted-foreground hover:text-foreground lg:inline-flex"
-              onClick={() => setCollapsed((value) => !value)} aria-label={collapsed ? t('shell.expand') : t('shell.collapse')} aria-expanded={!collapsed}>
-              {collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">{collapsed ? t('shell.expand') : t('shell.collapse')}</TooltipContent>
-        </Tooltip>
-      </div>
-
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-2" aria-label="Navigation">
-        {navGroups.map((group, index) => (
-          <div key={group.key ?? index} className="space-y-0.5">
-            {group.key && !collapsed && <p className="px-2 pb-1 text-xs font-medium text-muted-foreground">{t(group.key)}</p>}
-            {group.items.map((item) => (
-              <NavLink key={item.href} item={item} label={t(item.key)} active={isActive(pathname, item.href)} collapsed={collapsed}
-                badge={item.href === '/tasks' && openTasks > 0 ? openTasks : undefined} />
-            ))}
-          </div>
-        ))}
-      </nav>
-
-      <div className="space-y-0.5 border-t p-2">
-        {bottomItems.map((item) => <NavLink key={item.href} item={item} label={t(item.key)} active={isActive(pathname, item.href)} collapsed={collapsed} />)}
+  const navList = (open: boolean, withPin: boolean) => (
+    <div className="flex min-h-full flex-col gap-2">
+      {withPin && (
+        <RailButton open={open} label={pinned ? t('shell.collapse') : t('shell.expand')} icon={pinned ? PanelLeftClose : PanelLeftOpen}
+          onClick={togglePinned} pressed={pinned} />
+      )}
+      {navGroups.map((group, index) => (
+        <div key={group.key ?? index} className="flex flex-col gap-[2px]">
+          {group.key && (
+            <p className={cn('ds-label overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity] duration-500 ease-ds', open ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0')} aria-hidden={!open}>
+              {t(group.key)}
+            </p>
+          )}
+          {group.items.map((item) => (
+            <RailLink key={item.href} item={item} label={t(item.key)} active={isActive(activePath, item.href)} open={open} onNavigate={setPendingHref} onIntent={router.prefetch}
+              badge={item.href === '/tasks' && openTasks > 0 ? openTasks : undefined} />
+          ))}
+        </div>
+      ))}
+      <div className="mt-auto flex flex-col gap-[2px] pt-2">
+        {bottomItems.map((item) => <RailLink key={item.href} item={item} label={t(item.key)} active={isActive(activePath, item.href)} open={open} onNavigate={setPendingHref} onIntent={router.prefetch} />)}
       </div>
     </div>
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className={cn('sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r bg-[hsl(var(--sidebar))] transition-[width] duration-300 ease-[var(--ease-out)] lg:block', collapsed ? 'w-[60px]' : 'w-60')}>
-        {sidebar}
-      </aside>
+    <div className="min-h-screen">
+      {/* Brand: plain text, always top left – also inside the opened navigation panel. */}
+      <Link href="/" className="fixed left-4 top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+        <BrandWord />
+      </Link>
+
+      {/* Floating top bar: no surface of its own, content scrolls underneath the glass pieces. */}
+      <header className={cn('pointer-events-none fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[120px] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4', pinned && 'lg:pl-[284px]')}>
+        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? 284 : 120}px)` }}>
+          <Suspense fallback={null}><Breadcrumbs /></Suspense>
+        </div>
+
+        <button type="button" onClick={() => setPaletteOpen(true)}
+          className="group pointer-events-auto ml-auto flex h-8 w-8 items-center gap-2 rounded-full bg-field px-0 text-[13px] text-muted-foreground shadow-sm backdrop-blur-glass transition-[background-color,box-shadow,color] duration-600 ease-ds hover:bg-field-hover hover:text-foreground hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring sm:absolute sm:left-1/2 sm:ml-0 sm:w-[20rem] sm:-translate-x-1/2 sm:px-3.5 lg:w-[28rem]">
+          <Search className="mx-auto h-3.5 w-3.5 shrink-0 sm:mx-0" strokeWidth={1.6} />
+          <span className="hidden flex-1 truncate text-left sm:inline">{t('search.trigger')}</span>
+          <kbd className="ds-kbd pointer-events-none hidden select-none sm:inline-flex">{modifier} K</kbd>
+        </button>
+
+        <div className="pointer-events-auto flex items-center justify-end gap-1.5 sm:ml-auto">
+          <TelegramMenu />
+        </div>
+      </header>
+
+      {/* Desktop rail: free-standing icons; hover or the pin button opens the full panel. */}
+      <nav aria-label="Navigation"
+        className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-hidden pt-14 transition-[width,background-color,box-shadow] duration-700 ease-ds lg:flex',
+          expanded ? 'ds-menu w-[248px]' : 'w-[56px] bg-transparent shadow-none')}
+        onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}
+        onFocusCapture={() => hover(true)}
+        onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hover(false); }}>
+        <div className="no-scrollbar h-full overflow-y-auto overflow-x-hidden px-3 pb-3 pt-0.5">
+          {navList(expanded, true)}
+        </div>
+      </nav>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <button className="absolute inset-0 bg-black/40 backdrop-blur-sm duration-200 animate-in fade-in" aria-label={t('shell.closeNav')} onClick={() => setMobileOpen(false)} />
-          <aside className="pb-safe absolute inset-y-0 left-0 w-[min(20rem,85vw)] border-r bg-background shadow-2xl duration-300 ease-[var(--ease-out)] animate-in slide-in-from-left">{sidebar}</aside>
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button className="absolute inset-0 bg-black/20 backdrop-blur-[3px] duration-500 animate-in fade-in" aria-label={t('shell.closeNav')} onClick={() => setMobileOpen(false)} />
+          <aside className="pb-safe ds-menu no-scrollbar absolute inset-y-3 left-3 w-[min(17rem,85vw)] overflow-y-auto rounded-2xl p-2 duration-700 ease-ds animate-in slide-in-from-left">
+            {navList(true, false)}
+          </aside>
         </div>
       )}
 
-      <div className="page-glow flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 border-b border-border/60 bg-background/75 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-background/55 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="min-w-0 flex-1">
-              <Suspense fallback={null}><Breadcrumbs /></Suspense>
-            </div>
-          </div>
-          <button type="button" onClick={() => setPaletteOpen(true)}
-            className="group flex h-9 w-9 items-center gap-2.5 rounded-full border bg-muted/40 px-0 text-sm text-muted-foreground shadow-sm transition-all duration-300 ease-[var(--ease-out)] hover:border-brand/40 hover:bg-background hover:text-foreground hover:shadow-[0_0_0_4px_hsl(var(--brand)/0.08)] sm:w-[22rem] sm:px-3.5 lg:w-[30rem]">
-            <Search className="mx-auto h-4 w-4 shrink-0 transition-colors group-hover:text-brand sm:mx-0" />
-            <span className="hidden flex-1 truncate text-left sm:inline">{t('search.trigger')}</span>
-            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded-md border bg-background px-1.5 font-mono text-[10px] font-medium sm:inline-flex">{modifier} K</kbd>
-          </button>
-          <div className="flex items-center justify-end gap-1.5">
-            <TelegramMenu />
-          </div>
-        </header>
-
-        <main className={cn('w-full flex-1 pb-20 lg:pb-0', fullBleed.some((href) => isActive(pathname, href)) ? 'min-h-0' : 'mx-auto max-w-[1800px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8 2xl:px-14')}>
+      <div className={cn('pt-14 transition-[padding] duration-700 ease-ds', pinned ? 'lg:pl-[248px]' : 'lg:pl-[56px]')}>
+        <main className={cn('w-full pb-24 lg:pb-0', fullBleed.some((href) => isActive(pathname, href)) ? 'min-h-0' : 'mx-auto max-w-[1800px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8 2xl:px-14')}>
           {error && (
-            <div role="alert" className="mb-6 flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm animate-in fade-in slide-in-from-top-2 sm:flex-row sm:items-center">
-              <p className="flex-1"><span className="font-medium">{t('common.errorLoading')}</span> <span className="text-muted-foreground">{error}</span></p>
+            <div role="alert" className="ds-menu mb-6 flex flex-col gap-3 rounded-[16px] px-3.5 py-[11px] text-[13px] animate-in fade-in slide-in-from-top-2 sm:flex-row sm:items-center">
+              <p className="flex-1"><span className="font-semibold text-destructive">{t('common.errorLoading')}</span> <span className="text-muted-foreground">{error}</span></p>
               <Button size="sm" variant="outline" onClick={() => void reload()}>{t('common.retry')}</Button>
             </div>
           )}
@@ -176,71 +226,78 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
 
-      <nav aria-label={t('shell.openNav')} className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t bg-background/90 backdrop-blur-xl lg:hidden">
-        <div className="grid grid-cols-5">
+      {/* Phone dock: free-standing glass buttons at the bottom edge. */}
+      <nav aria-label={t('shell.openNav')} className="pb-safe pointer-events-none fixed inset-x-0 bottom-3 z-40 flex justify-center lg:hidden">
+        <div className="pointer-events-auto flex items-center gap-2">
           {mobileNav.map((item) => {
             const active = item.href !== '#menu' && isActive(pathname, item.href);
-            const content = (
-              <>
-                <span className={cn('flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-200', active && 'bg-brand/15 text-brand')}>
-                  <item.icon className="h-5 w-5" />
-                </span>
-                <span className="text-[10px] font-medium">{t(item.key)}</span>
-              </>
-            );
-            const className = cn('flex flex-col items-center gap-0.5 py-2 transition-colors', active ? 'text-foreground' : 'text-muted-foreground');
+            const className = cn('ds-float flex h-11 w-11 items-center justify-center rounded-full shadow-sm transition-[background-color,box-shadow,transform] duration-500 ease-ds active:scale-95',
+              active ? 'bg-primary text-primary-foreground' : 'ds-glass text-foreground');
+            const icon = <item.icon className="h-[18px] w-[18px]" strokeWidth={1.6} />;
             return item.href === '#menu' ? (
-              <button key={item.href} type="button" onClick={() => setMobileOpen(true)} className={className} aria-label={t('shell.openNav')}>{content}</button>
+              <button key={item.href} type="button" onClick={() => setMobileOpen(true)} className={className} aria-label={t('shell.openNav')}>{icon}</button>
             ) : (
-              <Link key={item.href} href={item.href} className={className} aria-current={active ? 'page' : undefined}>{content}</Link>
+              <Link key={item.href} href={item.href} className={className} aria-label={t(item.key)} aria-current={active ? 'page' : undefined}>{icon}</Link>
             );
           })}
         </div>
       </nav>
 
-      <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={allNavItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />
+      {paletteUsed && <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={allNavItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />}
     </div>
   );
 }
 
-function NavLink({ item, label, active, collapsed, badge }: { item: NavItem; label: string; active: boolean; collapsed: boolean; badge?: number }) {
-  const link = (
-    <Link
-      href={item.href}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'group relative flex h-8 items-center gap-2.5 rounded-md px-2 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-[0.98]',
-        active ? 'bg-accent font-medium text-foreground shadow-[inset_0_0_0_1px_hsl(var(--border))]' : 'text-muted-foreground',
-        collapsed && 'lg:justify-center lg:px-0',
-      )}
-    >
-      <span
-        aria-hidden="true"
-        className={cn(
-          'absolute -left-2 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-brand shadow-[0_0_10px_hsl(var(--brand)/0.7)] transition-all duration-300 ease-[var(--ease-out)]',
-          active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0',
-        )}
-      />
-      <item.icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110', active && 'text-brand')} />
-      <span className={cn('flex-1 truncate', collapsed && 'lg:hidden')}>{label}</span>
+/**
+ * One rail entry. Closed: a free-standing glass circle (active = primary). Open: a full-width nav row.
+ * The icon keeps its position between both states, so opening the panel only grows the rows.
+ */
+const railItemClass = (open: boolean, active: boolean) => cn(
+  'group relative flex h-[32px] shrink-0 items-center gap-2.5 overflow-hidden rounded-full pl-[8px] text-[13px] transition-[width,background-color,box-shadow,color,transform] duration-600 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring active:scale-[0.97]',
+  open
+    ? cn('w-full pr-2.5 shadow-none', active ? 'bg-accent font-medium text-foreground' : 'bg-transparent text-[hsl(var(--fg-2)/var(--fg-2-a))] hover:bg-accent hover:text-foreground')
+    : cn('w-[32px]', active ? 'bg-primary text-primary-foreground shadow-sm hover:shadow-md' : 'ds-glass text-foreground hover:bg-glass-hover hover:shadow-md'),
+);
+
+function RailLabel({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return <span className={cn('flex-1 truncate whitespace-nowrap text-left transition-opacity duration-500 ease-ds', open ? 'opacity-100 delay-100' : 'opacity-0')}>{children}</span>;
+}
+
+function RailLink({ item, label, active, open, badge, onNavigate, onIntent }: {
+  item: NavItem; label: string; active: boolean; open: boolean; badge?: number;
+  onNavigate?: (href: string) => void; onIntent?: (href: string) => void;
+}) {
+  return (
+    <Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={open ? undefined : label} className={railItemClass(open, active)}
+      onMouseEnter={() => onIntent?.(item.href)} onFocus={() => onIntent?.(item.href)}
+      onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) onNavigate?.(item.href); }}>
+      <item.icon className={cn('h-4 w-4 shrink-0', open && active && 'text-brand')} style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+      <RailLabel open={open}>{label}</RailLabel>
       {badge !== undefined && (
-        <span key={badge} className={cn('rounded-full bg-muted px-1.5 text-[11px] tabular-nums text-muted-foreground duration-300 animate-in zoom-in-50', collapsed && 'lg:hidden')}>{badge}</span>
+        <span key={badge}
+          className={cn('inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums transition-colors duration-500 ease-ds animate-in zoom-in-50',
+            open ? 'mr-0 bg-foreground text-background' : 'absolute right-0 top-0 scale-90 bg-foreground text-background ring-2 ring-background',
+            !open && active && 'bg-primary-foreground text-primary ring-primary')}>
+          {badge > 99 ? '99+' : badge}
+        </span>
       )}
     </Link>
   );
-  if (!collapsed) return link;
+}
+
+function RailButton({ open, label, icon: Icon, onClick, pressed }: { open: boolean; label: string; icon: LucideIcon; onClick: () => void; pressed: boolean }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{link}</TooltipTrigger>
-      <TooltipContent side="right">{label}</TooltipContent>
-    </Tooltip>
+    <button type="button" onClick={onClick} aria-pressed={pressed} aria-label={label} className={railItemClass(open, false)}>
+      <Icon className="shrink-0" style={{ width: 16, height: 16 }} strokeWidth={1.6} />
+      <RailLabel open={open}>{label}</RailLabel>
+    </button>
   );
 }
 
 /** The brand name; its letters drift up and back in an endless, quiet loop. */
 function BrandWord() {
   return (
-    <p className="brand-word truncate text-[15px] font-semibold leading-tight tracking-tight" aria-label="Anamnesies">
+    <p className="brand-word whitespace-nowrap text-[13px] font-semibold leading-tight tracking-[-0.01em]" aria-label="Anamnesies">
       {Array.from('Anamnesies').map((letter, index) => (
         <span key={index} aria-hidden="true" style={{ '--i': index } as React.CSSProperties}>{letter}</span>
       ))}

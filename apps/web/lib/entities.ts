@@ -56,9 +56,9 @@ export const entityColors: Record<EntityType | 'tag', string> = {
   project: 'hsl(var(--destructive))',
   knowledge: 'hsl(190 75% 42%)',
   idea: 'hsl(48 90% 48%)',
-  folder: 'hsl(var(--muted-foreground))',
+  folder: 'hsl(var(--muted-foreground) / var(--muted-foreground-a))',
   file: 'hsl(330 75% 60%)',
-  tag: 'hsl(var(--muted-foreground))',
+  tag: 'hsl(var(--muted-foreground) / var(--muted-foreground-a))',
 };
 
 export function resourceOf(type: EntityType): ResourceName {

@@ -1,12 +1,12 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { type FormEvent, useMemo, useState } from 'react';
 import { BookOpen, ExternalLink, Pencil, Plus } from 'lucide-react';
 
 import { useI18n } from '@/components/i18n-provider';
-import { ANY, FilterBar, useIncremental } from '@/components/filter-bar';
+import { ANY, FilterBar } from '@/components/filter-bar';
 import { ArchiveButton, EntityTags, ProjectSelect, RelationsPanel, TagInput, useEntityTags } from '@/components/knowledge';
-import { MarkdownEditor } from '@/components/markdown-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,12 +14,19 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { DeleteButton, EmptyState, Field, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { OpenFromQuery, useClearQueryId } from '@/components/open-from-query';
+import { VirtualList } from '@/components/virtual-list';
 import { useWorkspace } from '@/components/workspace-provider';
 import { colorOf } from '@/lib/appearance';
 import { formatDateTime } from '@/lib/dates';
 import { markdownToPlainText } from '@/lib/markdown';
 import type { KnowledgeArticle } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+// TipTap is large: load the editor only when a page actually shows it.
+const MarkdownEditor = dynamic(() => import('@/components/markdown-editor').then((module) => module.MarkdownEditor), {
+  ssr: false,
+  loading: () => <div className="min-h-[240px]" aria-hidden="true" />,
+});
 
 const NONE = '__none__';
 
@@ -45,7 +52,6 @@ export default function KnowledgePage() {
       .filter((article) => !term || `${article.title} ${article.content ?? ''} ${article.category ?? ''}`.toLowerCase().includes(term))
       .sort((a, b) => (sort === 'title' ? a.title.localeCompare(b.title) : sort === 'created' ? b.created_at.localeCompare(a.created_at) : b.updated_at.localeCompare(a.updated_at)));
   }, [category, data.knowledge, project, query, sort, tag, tagAssignments]);
-  const { visible, marker } = useIncremental(articles, 45);
 
   if (loading) return <PageSkeleton />;
 
@@ -70,11 +76,11 @@ export default function KnowledgePage() {
       </FilterBar>
 
       {articles.length ? (
-        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {visible.map((article) => {
+        <VirtualList items={articles} keyOf={(article) => article.id} estimateSize={200} gap={16}
+          columns={(width) => (width >= 1536 ? 3 : width >= 1024 ? 2 : 1)} renderItem={(article) => {
             const color = colorOf(article.category ?? article.title);
             return (
-              <Card key={article.id} className="lazy-card card-hover relative overflow-hidden">
+              <Card className="card-hover relative h-full overflow-hidden">
                 <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} aria-hidden="true" />
                 <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
                   <button type="button" className="min-w-0 space-y-1.5 text-left" onClick={() => setEditing(article)}>
@@ -100,12 +106,10 @@ export default function KnowledgePage() {
                 </CardContent>
               </Card>
             );
-          })}
-        </div>
+          }} />
       ) : (
         <EmptyState icon={BookOpen} title={t('knowledge.empty')} description={t('knowledge.emptyDesc')} action={<Button variant="outline" onClick={() => setEditing('new')}><Plus />{t('knowledge.new')}</Button>} />
       )}
-      {marker}
 
       <OpenFromQuery items={data.knowledge} onOpen={setEditing} />
       <ArticleDialog article={editing} categories={categories} onClose={() => { setEditing(null); clearQuery(); }} />
@@ -167,7 +171,7 @@ function ArticleDialog({ article, categories, onClose, defaultProjectId }: { art
               onChange={(content) => setForm((current) => ({ ...current, content }))}
               placeholder={t('notes.startWriting')}
               label={t('knowledge.content')}
-              className="min-h-[360px] flex-1 rounded-lg border border-input bg-background/60 px-4 py-3 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-foreground/20 focus-within:border-foreground/30 focus-within:ring-4 focus-within:ring-ring/10"
+              className="min-h-[360px] flex-1 rounded-lg bg-field shadow-sm px-4 py-3 shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-foreground/20 focus-within:border-foreground/30 focus-within:ring-[3px] focus-within:ring-ring"
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">

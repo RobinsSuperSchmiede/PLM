@@ -12,7 +12,7 @@ export function DotLoader({ size = 28, label, className, animated = true, hoverA
   hoverAnimated?: boolean;
 }) {
   return (
-    <span className={cn('inline-flex text-foreground', className)} role={label ? 'status' : undefined} aria-label={label}>
+    <span className={cn('inline-flex text-foreground', className)} role={label ? 'status' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
       <DotmSquare3 size={size} animated={animated} hoverAnimated={hoverAnimated} ariaLabel={label} />
     </span>
   );

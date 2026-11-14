@@ -83,10 +83,10 @@ export default function ProjectsPage() {
             const notes = data.notes.filter((note) => note.project_id === project.id).length;
             const schedule = data.events.filter((event) => event.project_id === project.id).length + data.meetings.filter((meeting) => meeting.project_id === project.id).length;
             return (
-              <Card key={project.id} className="card-hover flex flex-col overflow-hidden border-t-[3px]" style={{ borderTopColor: colorOf(project.name) }}>
+              <Card key={project.id} className="flex flex-col overflow-hidden transition-shadow duration-200 ease-ds hover:shadow-md">
                 <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
                   <Link href={`/projects/${project.id}`} className="min-w-0 space-y-1.5">
-                    <CardTitle className="truncate text-base hover:underline">{project.name}</CardTitle>
+                    <CardTitle className="flex items-center gap-2 truncate text-base hover:underline"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorOf(project.name) }} aria-hidden="true" />{project.name}</CardTitle>
                     <Badge variant={projectStatusVariant[project.status]}>{t(`projects.${project.status}`)}</Badge>
                   </Link>
                   <div className="flex shrink-0">
@@ -104,7 +104,7 @@ export default function ProjectsPage() {
                       <span className="tabular-nums">{percent}%</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-success transition-[width] duration-700 ease-[var(--ease-out)]" style={{ width: `${percent}%` }} />
+                      <div className="h-full rounded-full bg-success transition-[width] duration-700 ease-ds" style={{ width: `${percent}%` }} />
                     </div>
                   </div>
                   <div className="space-y-1">

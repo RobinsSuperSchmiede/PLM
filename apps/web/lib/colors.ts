@@ -8,7 +8,7 @@ export const priorityColors: Record<TaskPriority, string> = {
 };
 
 export const statusColors: Record<TaskStatus, string> = {
-  todo: 'hsl(var(--muted-foreground))',
+  todo: 'hsl(var(--muted-foreground) / var(--muted-foreground-a))',
   'in-progress': 'hsl(var(--info))',
   done: 'hsl(var(--success))',
 };
@@ -16,11 +16,11 @@ export const statusColors: Record<TaskStatus, string> = {
 export const projectStatusColors: Record<ProjectStatus, string> = {
   active: 'hsl(var(--success))',
   on_hold: 'hsl(var(--warning))',
-  completed: 'hsl(var(--muted-foreground))',
+  completed: 'hsl(var(--muted-foreground) / var(--muted-foreground-a))',
 };
 
 export const meetingStatusColors: Record<MeetingStatus, string> = {
   planned: 'hsl(var(--brand))',
   done: 'hsl(var(--success))',
-  cancelled: 'hsl(var(--muted-foreground))',
+  cancelled: 'hsl(var(--muted-foreground) / var(--muted-foreground-a))',
 };

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Download, Files, FolderKanban, Paperclip, X } from 'lucide-react';
 
 import { AcceptedFilesHint } from '@/components/accepted-files-hint';
-import { DropZone, FileKindIcon, FilePreview, PreviewOverlay, UploadButton, fileKinds, fileUrl, kindStyles, useUpload } from '@/components/files';
+import { DropZone, FileKindIcon, FilePreview, PreviewOverlay, UploadButton, fileKinds, fileUrl, kindStyles, thumbnailUrl, useUpload } from '@/components/files';
 import { useI18n } from '@/components/i18n-provider';
 import { ArchiveButton, EntityTagEditor, ProjectSelect, RelationsPanel } from '@/components/knowledge';
 import { OpenFromQuery, useClearQueryId } from '@/components/open-from-query';
@@ -114,7 +114,7 @@ export default function FilesPage() {
                       <span className="flex min-w-0 items-center gap-3" role="cell">
                         {file.kind === 'image' ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={fileUrl(file.id)} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                          <img src={thumbnailUrl(file.id, 160)} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover" />
                         ) : <FileKindIcon kind={file.kind} boxed />}
                         <span className="min-w-0"><span className="block truncate font-medium">{file.name}</span>
                           {file.description && <span className="block truncate text-xs text-muted-foreground">{file.description}</span>}</span>
@@ -133,7 +133,7 @@ export default function FilesPage() {
           </div>
 
           {selected && (
-            <aside key={selected.id} className="border-t bg-[hsl(var(--sidebar))]/40 duration-200 animate-in fade-in slide-in-from-right-2 xl:sticky xl:top-0 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:border-l xl:border-t-0">
+            <aside key={selected.id} className="border-t bg-card/40 duration-200 animate-in fade-in slide-in-from-right-2 xl:sticky xl:top-14 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:border-l xl:border-t-0">
               <FileDetails file={selected} onPreview={() => setPreview(selected)} onClose={() => { setSelectedId(null); clearQuery(); }}
                 onSave={(patch) => void update('files', selected.id, patch)} onDelete={() => { void remove('files', selected.id); setSelectedId(null); }} />
             </aside>
@@ -168,7 +168,7 @@ function FileDetails({ file, onPreview, onClose, onSave, onDelete }: {
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label={t('notes.close')}><X /></Button>
       </div>
-      <button type="button" onClick={onPreview} className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg border bg-muted/30 transition-colors hover:bg-muted/60">
+      <button type="button" onClick={onPreview} className="flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-muted transition-colors hover:bg-muted/60">
         {file.kind === 'image' || file.kind === 'pdf' ? <FilePreview file={file} className={file.kind === 'pdf' ? 'pointer-events-none min-h-0' : 'max-h-56'} /> : <FileKindIcon kind={file.kind} boxed className="h-16 w-16" />}
       </button>
       <div className="flex gap-2">

@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TelegramSettings } from '@/components/telegram-settings';
 import { Field, PageHeader, PageSkeleton, TokenField, UrlRow } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api, ApiError } from '@/lib/api';
+import { api, ApiError, peek } from '@/lib/api';
 import type { AppSettings, DomainCheck, Language, SmtpSecurity, TelegramSettings as TelegramSettingsType, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -101,9 +101,9 @@ function GeneralSettings() {
                 role="radio"
                 aria-checked={theme === value}
                 onClick={() => { setTheme(value); void saveSettings({ theme: value }); }}
-                className={cn('flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-sm transition-colors hover:bg-accent', theme === value ? 'border-primary' : 'border-muted')}
+                className={cn('flex flex-col items-center gap-2 rounded-lg p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds', theme === value ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-[18px] w-[18px]" strokeWidth={1.6} />
                 {label}
               </button>
             ))}
@@ -417,7 +417,7 @@ function SecuritySettings() {
 
 function TwoFactorSetting() {
   const { t } = useI18n();
-  const [telegram, setTelegram] = useState<TelegramSettingsType | null>(null);
+  const [telegram, setTelegram] = useState<TelegramSettingsType | null>(() => peek<TelegramSettingsType>('/telegram') ?? null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

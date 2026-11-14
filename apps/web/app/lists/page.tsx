@@ -61,7 +61,7 @@ function ListsView() {
                 const done = list.items.filter((item) => item.done).length;
                 return (
                   <button key={list.id} type="button" onClick={() => select(list.id)} aria-current={selected?.id === list.id}
-                    className={cn('w-full rounded-md px-3 py-2 text-left transition-all duration-200 hover:bg-accent active:scale-[0.99]', selected?.id === list.id && 'bg-accent')}>
+                    className={cn('w-full rounded-md px-3 py-2 text-left transition-[background-color,border-color,color,transform] duration-200 hover:bg-accent active:scale-[0.99]', selected?.id === list.id && 'bg-accent')}>
                     <span className="flex items-center gap-2"><ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate text-sm font-medium">{list.title}</span></span>
                     <span className="mt-0.5 flex items-center justify-between pl-[22px] text-xs text-muted-foreground"><span>{list.category}</span><span className="tabular-nums">{done}/{list.items.length}</span></span>
                   </button>

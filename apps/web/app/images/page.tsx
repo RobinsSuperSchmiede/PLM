@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { FolderKanban, Image as ImageIcon } from 'lucide-react';
 
-import { DropZone, PreviewOverlay, UploadButton, fileUrl, useUpload } from '@/components/files';
+import { DropZone, PreviewOverlay, UploadButton, thumbnailUrl, useUpload } from '@/components/files';
 import { useI18n } from '@/components/i18n-provider';
 import { PaneHeader, SidebarItem, SidebarSection, SplitLayout } from '@/components/split-layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -90,9 +90,10 @@ export default function ImagesPage() {
                     <button key={image.id} type="button" onClick={() => setOpen(images.indexOf(image))}
                       className="group relative mb-3 block w-full overflow-hidden rounded-xl bg-muted/40 [break-inside:avoid] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={fileUrl(image.id)} alt={image.description ?? image.name} loading="lazy" decoding="async"
-                        className="w-full transition-transform duration-500 ease-[var(--ease-out)] group-hover:scale-[1.03]" />
-                      <span className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-3 text-left text-xs text-white transition-transform duration-300 ease-[var(--ease-out)] group-hover:translate-y-0">
+                      <img src={thumbnailUrl(image.id, 640)} srcSet={`${thumbnailUrl(image.id, 320)} 320w, ${thumbnailUrl(image.id, 640)} 640w, ${thumbnailUrl(image.id, 1280)} 1280w`}
+                        sizes="(min-width: 1536px) 20vw, (min-width: 1280px) 25vw, (min-width: 640px) 33vw, 50vw" alt={image.description ?? image.name} loading="lazy" decoding="async"
+                        className="w-full" />
+                      <span className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/70 to-transparent p-3 text-left text-xs text-white transition-transform duration-300 ease-ds group-hover:translate-y-0">
                         {image.name}
                       </span>
                     </button>

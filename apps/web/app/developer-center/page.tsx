@@ -78,7 +78,7 @@ export default function DeveloperCenterPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Activity className="h-4 w-4" />{t('developer.endpoints')}</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">{t('developer.endpoints')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
             {endpoints.map(([method, path]) => (
@@ -99,7 +99,7 @@ export default function DeveloperCenterPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4" />{t('developer.tables')}</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">{t('developer.tables')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>

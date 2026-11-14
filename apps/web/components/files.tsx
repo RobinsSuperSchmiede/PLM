@@ -28,6 +28,11 @@ export function fileUrl(id: string, download = false) {
   return `/api/v1/files/${id}/content${download ? '?download=true' : ''}`;
 }
 
+/** Small WebP preview of an image (longest edge `size` px); lists and galleries use it instead of the original. */
+export function thumbnailUrl(id: string, size: 160 | 320 | 640 | 1280 = 320) {
+  return `/api/v1/files/${id}/thumbnail?size=${size}`;
+}
+
 export function FileKindIcon({ kind, className, boxed }: { kind: FileKind; className?: string; boxed?: boolean }) {
   const { icon: Icon, color } = kindStyles[kind];
   if (!boxed) return <Icon className={cn('h-4 w-4 shrink-0', className)} style={{ color }} />;
@@ -108,7 +113,7 @@ export function DropZone({ onFiles, children, className, label }: { onFiles: (fi
     >
       {children}
       {over && (
-        <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand bg-background/85 text-center backdrop-blur-sm duration-150 animate-in fade-in">
+        <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-[16px] bg-popover text-center outline-dashed outline-[1.5px] -outline-offset-[1.5px] outline-foreground/20 backdrop-blur-surface duration-300 animate-in fade-in">
           <Upload className="h-6 w-6 text-brand" />
           <p className="text-sm font-medium">{label ?? t('files.drop')}</p>
           <p className="text-xs text-muted-foreground">{t('files.dropHint')}</p>
@@ -186,11 +191,11 @@ export function AttachmentsPanel({ type, id, projectId, className }: { type: Ent
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2">
             {attached.map(({ linkId, file }) => (
-              <li key={linkId} className="group flex items-center gap-3 rounded-lg border bg-card/60 p-2 pr-2.5 transition-colors hover:bg-accent/50">
+              <li key={linkId} className="group flex items-center gap-3 rounded-lg bg-card/60 shadow-sm p-2 pr-2.5 transition-colors hover:bg-accent/50">
                 <button type="button" onClick={() => setPreview(file)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   {file.kind === 'image' ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={fileUrl(file.id)} alt="" loading="lazy" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                    <img src={thumbnailUrl(file.id, 160)} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover" />
                   ) : <FileKindIcon kind={file.kind} boxed />}
                   <span className="min-w-0">
                     <span className="block truncate text-sm">{file.name}</span>

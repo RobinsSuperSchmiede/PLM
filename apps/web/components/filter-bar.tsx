@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { ArrowUpDown, X } from 'lucide-react';
 
 import { useI18n } from '@/components/i18n-provider';
@@ -66,29 +65,4 @@ export function FilterBar({ filters, sort, className, children }: {
       )}
     </div>
   );
-}
-
-/**
- * Renders long lists in slices: the first `step` items right away, more when the end of the list
- * scrolls into view. Keeps hundreds of rows fast without a virtualization library.
- */
-export function useIncremental<T>(items: T[], step = 80) {
-  const [count, setCount] = useState(step);
-  const sentinel = useRef<HTMLDivElement>(null);
-  const total = items.length;
-
-  useEffect(() => setCount(step), [items, step]);
-
-  useEffect(() => {
-    const element = sentinel.current;
-    if (!element || count >= total) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) setCount((value) => Math.min(total, value + step));
-    }, { rootMargin: '600px' });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [count, step, total]);
-
-  const marker = count < total ? <div ref={sentinel} className="h-8" aria-hidden="true" /> : null;
-  return { visible: items.slice(0, count), marker, shown: Math.min(count, total), total };
 }

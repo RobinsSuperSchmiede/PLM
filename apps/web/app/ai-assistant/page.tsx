@@ -11,14 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyButton, PageHeader, PageSkeleton, TokenField, UrlRow } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 
 type Tool = { name: string; description: string | null };
 
 export default function AssistantPage() {
   const { t } = useI18n();
   const { settings, loading } = useWorkspace();
-  const [tools, setTools] = useState<Tool[]>([]);
+  const [tools, setTools] = useState<Tool[]>(() => peek<Tool[]>('/mcp/tools') ?? []);
 
   useEffect(() => {
     api.get<Tool[]>('/mcp/tools').then(setTools).catch(() => setTools([]));
@@ -57,7 +57,7 @@ export default function AssistantPage() {
         <Card>
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div className="space-y-1.5">
-              <CardTitle className="flex items-center gap-2 text-base"><Bot className="h-4 w-4" />MCP</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">MCP</CardTitle>
               <CardDescription>Streamable HTTP</CardDescription>
             </div>
             <Badge variant={settings.mcp_enabled ? 'success' : 'secondary'}>{settings.mcp_enabled ? t('assistant.statusOnline') : t('assistant.statusOffline')}</Badge>
@@ -87,7 +87,7 @@ export default function AssistantPage() {
               </TabsList>
               {(Object.keys(snippets) as (keyof typeof snippets)[]).map((key) => (
                 <TabsContent key={key} value={key} className="relative">
-                  <pre className="max-h-64 overflow-auto rounded-lg border bg-muted/50 p-4 pr-12 font-mono text-xs leading-relaxed">{snippets[key]}</pre>
+                  <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-4 pr-12 font-mono text-xs leading-relaxed">{snippets[key]}</pre>
                   <CopyButton value={snippets[key]} className="absolute right-2 top-2" />
                 </TabsContent>
               ))}
@@ -98,7 +98,7 @@ export default function AssistantPage() {
 
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Wrench className="h-4 w-4" />{t('assistant.tools')} <Badge variant="secondary">{tools.length}</Badge></CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">{t('assistant.tools')} <Badge variant="secondary">{tools.length}</Badge></CardTitle>
           <CardDescription>{t('assistant.toolsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="stagger grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">

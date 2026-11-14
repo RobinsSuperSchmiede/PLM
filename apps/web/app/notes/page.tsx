@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type MutableRefObject, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -11,7 +12,6 @@ import { DotLoader } from '@/components/dot-loader';
 import { AttachmentsPanel, fileUrl, useUpload } from '@/components/files';
 import { useI18n } from '@/components/i18n-provider';
 import { ArchiveButton, EntityTags, ProjectSelect, RelationsPanel, TagInput, useEntityTags } from '@/components/knowledge';
-import { MarkdownEditor } from '@/components/markdown-editor';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DeleteButton, EmptyState, PageSkeleton, SearchInput } from '@/components/workspace-ui';
+import { VirtualList } from '@/components/virtual-list';
 import { useWorkspace } from '@/components/workspace-provider';
 import { colorOf } from '@/lib/appearance';
 import { formatDateTime } from '@/lib/dates';
@@ -27,6 +28,12 @@ import { wikiLinks } from '@/lib/entities';
 import { markdownToPlainText } from '@/lib/markdown';
 import type { Folder, Note, NoteSource } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
+// TipTap is large: load the editor only when a page actually shows it.
+const MarkdownEditor = dynamic(() => import('@/components/markdown-editor').then((module) => module.MarkdownEditor), {
+  ssr: false,
+  loading: () => <div className="min-h-[240px]" aria-hidden="true" />,
+});
 
 const ALL = 'all';
 const UNFILED = 'unfiled';
@@ -103,7 +110,7 @@ function NotesWorkspace() {
   const activeId = searchParams.get('id');
   const scope = searchParams.get('folder') ?? ALL;
   // Set by the active editor: saves pending changes, or deletes the note if it was never filled in.
-  const beforeClose = useRef<() => void>();
+  const beforeClose = useRef<(() => void) | undefined>(undefined);
 
   const go = useCallback((params: { folder?: string | null; id?: string | null }) => {
     const next = new URLSearchParams();
@@ -154,14 +161,14 @@ function NotesWorkspace() {
   return (
     <div className={cn('grid lg:h-[calc(100vh-3.5rem)]', explorerOpen && !focus && 'lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[310px_minmax(0,1fr)]')}>
       {(explorerOpen || mobileExplorer) && !focus && (
-        <aside className={cn('min-h-0 border-b bg-[hsl(var(--sidebar))]/60 lg:h-full lg:border-b-0 lg:border-r', mobileExplorer ? 'duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden lg:block', !explorerOpen && 'lg:hidden')}
+        <aside className={cn('min-h-0 border-b bg-card/60 lg:h-full lg:border-b-0 lg:border-r', mobileExplorer ? 'duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden lg:block', !explorerOpen && 'lg:hidden')}
           onClick={(event) => { if ((event.target as HTMLElement).closest('li > button')) setMobileExplorer(false); }}>
           <Explorer scope={scope} activeId={activeId} onSelectFolder={(folder) => go({ folder, id: null })} onOpenNote={open} onCreateNote={(folderId) => void createNote(folderId)} />
         </aside>
       )}
 
       <section className={cn('flex min-h-[70vh] min-w-0 flex-col overflow-hidden lg:h-full lg:min-h-0', focus && 'fixed inset-0 z-50 bg-background duration-300 animate-in fade-in zoom-in-[0.99]')}>
-        <div className="flex shrink-0 items-stretch border-b bg-[hsl(var(--sidebar))]/40">
+        <div className="flex shrink-0 items-stretch border-b bg-card/40">
           {!focus && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -232,7 +239,7 @@ function TabButton({ active, onClick, onClose, icon: Icon, label, pinned }: {
         active ? 'bg-background text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
       )}
     >
-      <span aria-hidden="true" className={cn('absolute inset-x-0 top-0 h-0.5 bg-info transition-transform duration-300 ease-[var(--ease-out)]', active ? 'scale-x-100' : 'scale-x-0')} />
+      <span aria-hidden="true" className={cn('absolute inset-x-0 top-0 h-0.5 bg-info transition-transform duration-300 ease-ds', active ? 'scale-x-100' : 'scale-x-0')} />
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">{label}</span>
       {pinned && <Pin className="h-3 w-3 shrink-0 opacity-60" />}
@@ -291,10 +298,6 @@ function Overview({ scope, onOpen, onCreate }: { scope: string; onOpen: (id: str
       .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at.localeCompare(a.updated_at));
   }, [data.notes, filters, linkedNotes, query, scope, scopeIds, tagAssignments, tags]);
 
-  // Render in pages so hundreds of notes stay fast.
-  const [limit, setLimit] = useState(60);
-  useEffect(() => setLimit(60), [query, filters, scope]);
-
   const activeFilters = (Object.keys(noFilters) as (keyof Filters)[]).filter((key) => filters[key] !== noFilters[key]).length;
   const folder = data.folders.find((entry) => entry.id === scope);
   const heading = scope === UNFILED ? t('explorer.unfiled') : folder?.name ?? t('explorer.allNotes');
@@ -318,14 +321,10 @@ function Overview({ scope, onOpen, onCreate }: { scope: string; onOpen: (id: str
       ) : notes.length === 0 ? (
         <EmptyState icon={Filter} title={t('explorer.noResults')} action={activeFilters || query ? <Button variant="outline" onClick={() => { setFilters(noFilters); setQuery(''); }}>{t('explorer.clearFilters')}</Button> : undefined} />
       ) : (
-        <>
-          <div className="stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {notes.slice(0, limit).map((note) => <NoteCard key={note.id} note={note} language={language} onOpen={() => onOpen(note.id)} onTogglePin={() => void update('notes', note.id, { pinned: !note.pinned })} />)}
-          </div>
-          {notes.length > limit && (
-            <div className="mt-6 flex justify-center"><Button variant="outline" onClick={() => setLimit(limit + 60)}>+{Math.min(60, notes.length - limit)}</Button></div>
-          )}
-        </>
+        // Only the cards on screen are rendered, however many notes there are.
+        <VirtualList items={notes} keyOf={(note) => note.id} estimateSize={190} gap={12}
+          columns={(width) => (width >= 1536 ? 4 : width >= 1280 ? 3 : width >= 640 ? 2 : 1)}
+          renderItem={(note) => <NoteCard note={note} language={language} onOpen={() => onOpen(note.id)} onTogglePin={() => void update('notes', note.id, { pinned: !note.pinned })} />} />
       )}
     </div>
   );
@@ -349,11 +348,10 @@ function NoteCard({ note, language, onOpen, onTogglePin }: { note: Note; languag
       }}
       onClick={onOpen}
       onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && (event.preventDefault(), onOpen())}
-      className="lazy-card group relative flex min-h-44 cursor-pointer flex-col rounded-xl border border-transparent bg-muted/30 p-4 text-left transition-colors duration-200 hover:border-border hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative flex h-full min-h-44 cursor-pointer flex-col rounded-xl bg-card p-4 text-left shadow-sm transition-[background-color,box-shadow] duration-200 ease-ds hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring"
     >
-      {(project || folder) && <span className="absolute left-0 top-4 h-6 w-[3px] rounded-r-full" style={{ background: colorOf(project?.name ?? folder?.name ?? '') }} aria-hidden="true" />}
       <div className="flex items-start gap-2">
-        <span className="line-clamp-2 flex-1 font-semibold tracking-tight">{note.title || t('common.untitled')}</span>
+        <span className="line-clamp-2 flex-1 text-[13px] font-medium">{note.title || t('common.untitled')}</span>
         <button
           type="button"
           onClick={(event) => { event.stopPropagation(); onTogglePin(); }}
@@ -363,14 +361,14 @@ function NoteCard({ note, language, onOpen, onTogglePin }: { note: Note; languag
           <Pin className={cn('h-4 w-4', note.pinned && 'fill-current text-foreground')} />
         </button>
       </div>
-      <span className={cn('mt-2 line-clamp-4 flex-1 whitespace-pre-line text-sm leading-6 text-muted-foreground', !preview && 'italic opacity-70')}>
+      <span className={cn('mt-2 line-clamp-4 flex-1 whitespace-pre-line text-[13px] leading-[1.55] text-[hsl(var(--fg-2)/var(--fg-2-a))]', !preview && 'text-muted-foreground')}>
         {preview || t('notes.noContent')}
       </span>
       <EntityTags type="note" id={note.id} className="mt-3" limit={3} />
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         {folder && <span className="inline-flex items-center gap-1"><FolderIcon className="h-3 w-3" />{folder.name}</span>}
-        {project && <span className="inline-flex items-center gap-1 font-medium" style={{ color: colorOf(project.name) }}><span className="h-1.5 w-1.5 rounded-full" style={{ background: colorOf(project.name) }} />{project.name}</span>}
-        <span className="ml-auto">{formatDateTime(note.updated_at, language)}</span>
+        {project && <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: colorOf(project.name) }} />{project.name}</span>}
+        <span className="ml-auto font-mono tabular-nums">{formatDateTime(note.updated_at, language)}</span>
       </div>
     </div>
   );
@@ -433,7 +431,7 @@ function Explorer({ scope, activeId, onSelectFolder, onOpenNote, onCreateNote }:
   const [renaming, setRenaming] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
-  const hoverTimer = useRef<number>();
+  const hoverTimer = useRef<number | undefined>(undefined);
 
   const term = filter.trim().toLowerCase();
   const notesByFolder = useMemo(() => {
@@ -543,7 +541,7 @@ function Explorer({ scope, activeId, onSelectFolder, onOpenNote, onCreateNote }:
           onNewNote={() => onCreateNote(folder.id)}
           onDeleted={() => scope === folder.id && onSelectFolder(null)}
         />
-        <div className={cn('grid transition-[grid-template-rows] duration-200 ease-[var(--ease-out)]', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
+        <div className={cn('grid transition-[grid-template-rows] duration-200 ease-ds', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
           <ul className="overflow-hidden">
             {open && (
               <>
@@ -561,7 +559,7 @@ function Explorer({ scope, activeId, onSelectFolder, onOpenNote, onCreateNote }:
   return (
     <div className="flex h-full max-h-[60vh] flex-col overflow-hidden lg:max-h-none">
       <div className="flex items-center gap-1 border-b px-3 py-2">
-        <p className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('explorer.title')}</p>
+        <p className="flex-1 ds-label">{t('explorer.title')}</p>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={() => void newFolder(null)} aria-label={t('explorer.newFolder')}><FolderPlus /></Button>
@@ -614,7 +612,7 @@ function Explorer({ scope, activeId, onSelectFolder, onOpenNote, onCreateNote }:
 function ExplorerSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="px-2 pb-1 ds-label">{title}</p>
       <ul className="space-y-px">{children}</ul>
     </div>
   );
@@ -718,8 +716,8 @@ function FolderRow({ folder, depth, count, active, open, hasChildren, renaming, 
       style={{ paddingLeft: `${depth * 14 + 4}px` }}
     >
       <button type="button" onClick={onToggle} aria-label={folder.name} aria-expanded={open}
-        className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-background', !hasChildren && 'opacity-30')}>
-        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-200 ease-[var(--ease-out)]', open && 'rotate-90')} />
+        className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-accent', !hasChildren && 'opacity-30')}>
+        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-200 ease-ds', open && 'rotate-90')} />
       </button>
       {renaming ? (
         <input
@@ -733,7 +731,7 @@ function FolderRow({ folder, depth, count, active, open, hasChildren, renaming, 
             if (event.key === 'Escape') { setName(folder.name); onRename(folder.name); }
           }}
           aria-label={t('explorer.folderName')}
-          className="h-6 min-w-0 flex-1 rounded border bg-background px-1.5 text-sm text-foreground outline-none ring-2 ring-ring/20"
+          className="h-6 min-w-0 flex-1 rounded bg-field shadow-sm px-1.5 text-sm text-foreground outline-none ring-2 ring-ring/20"
         />
       ) : (
         <button type="button" onClick={() => { onToggle(); onSelect(); }} onDoubleClick={onStartRename} className="flex min-w-0 flex-1 items-center gap-2 text-left">
@@ -745,13 +743,13 @@ function FolderRow({ folder, depth, count, active, open, hasChildren, renaming, 
       )}
       <span className="text-xs tabular-nums text-muted-foreground group-hover:hidden">{count || ''}</span>
       <button type="button" onClick={onNewNote} aria-label={t('explorer.newNoteHere')}
-        className="hidden h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-background group-hover:flex">
+        className="hidden h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-accent group-hover:flex">
         <Plus className="h-3.5 w-3.5" />
       </button>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <button type="button" aria-label={t('explorer.options', { name: folder.name })}
-            className="hidden h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-background group-hover:flex data-[state=open]:flex">
+            className="hidden h-6 w-6 shrink-0 items-center justify-center rounded hover:bg-accent group-hover:flex data-[state=open]:flex">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
@@ -850,7 +848,7 @@ function NoteEditor({ note, focus, onToggleFocus, beforeClose, onGone }: {
     <div className="flex min-h-full flex-col duration-200 animate-in fade-in">
       <div className="sticky top-0 z-10 flex items-center gap-1 border-b bg-background/90 px-3 py-1.5 backdrop-blur sm:px-5">
         <p className="mr-auto flex min-w-0 items-center gap-2 truncate text-xs text-muted-foreground">
-          {busy ? <DotLoader size={14} className="text-info" /> : <Check className="h-3.5 w-3.5 shrink-0 text-success" />}
+          {busy ? <DotLoader size={14} className="text-muted-foreground" /> : <Check className="h-3.5 w-3.5 shrink-0 text-success" />}
           <span className="truncate">{busy ? t('common.saving') : `${t('common.updated')} ${formatDateTime(note.updated_at, language)}`}</span>
           <span className="hidden sm:inline">· {t('explorer.words', { count: words })}</span>
         </p>
@@ -889,7 +887,7 @@ function NoteEditor({ note, focus, onToggleFocus, beforeClose, onGone }: {
           placeholder={t('common.untitled')}
           aria-label={t('common.title')}
           autoFocus={!note.title}
-          className="w-full resize-none bg-transparent text-3xl font-bold leading-tight tracking-tight outline-none [field-sizing:content] placeholder:text-muted-foreground/40 sm:text-[40px]"
+          className="w-full resize-none bg-transparent text-3xl font-semibold leading-tight tracking-tight outline-none [field-sizing:content] placeholder:text-muted-foreground/40 sm:text-[40px]"
         />
 
         {!focus && (

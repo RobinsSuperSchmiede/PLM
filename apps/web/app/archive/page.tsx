@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { contentTypes, entityIcons, entityLabelKeys } from '@/lib/entities';
 import { markdownToPlainText } from '@/lib/markdown';
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 export default function ArchivePage() {
   const { t, language } = useI18n();
   const { data, restore, reloadOrganization } = useWorkspace();
-  const [items, setItems] = useState<ArchivedItem[] | null>(null);
+  const [items, setItems] = useState<ArchivedItem[] | null>(() => peek<ArchivedItem[]>('/archive') ?? null);
   const [query, setQuery] = useState('');
   const [type, setType] = useState<EntityType | 'all'>('all');
   const [selected, setSelected] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export default function ArchivePage() {
           <div className="mb-5 flex flex-wrap gap-1.5" role="tablist">
             {(['all', ...typesPresent] as const).map((entry) => (
               <button key={entry} type="button" role="tab" aria-selected={type === entry} onClick={() => setType(entry)}
-                className={cn('rounded-full border px-3 py-1 text-xs transition-all duration-200 active:scale-95',
+                className={cn('rounded-full border px-3 py-1 text-xs transition-[background-color,border-color,color,transform] duration-200 active:scale-95',
                   type === entry ? 'border-foreground/30 bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent')}>
                 {entry === 'all' ? t('tags.allTypes') : t(entityLabelKeys[entry])}
                 <span className="ml-1 tabular-nums opacity-70">{entry === 'all' ? items.length : items.filter((item) => item.type === entry).length}</span>

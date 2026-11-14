@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from sqlalchemy import MetaData, create_engine, inspect, text
+from sqlalchemy import MetaData, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.schema import CreateColumn
 
@@ -9,6 +9,19 @@ from app.core.config import get_settings
 settings = get_settings()
 connect_args = {"check_same_thread": False} if settings.sqlalchemy_url.startswith("sqlite") else {}
 engine = create_engine(settings.sqlalchemy_url, future=True, pool_pre_ping=True, connect_args=connect_args)
+
+if engine.dialect.name == "sqlite":
+
+    @event.listens_for(engine, "connect")
+    def _tune_sqlite(dbapi_connection, _record) -> None:  # type: ignore[no-untyped-def]
+        """WAL lets readers and the writer work at the same time (web app, scheduler, MCP)."""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+
+
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False, future=True)
 
 
@@ -28,6 +41,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _add_missing_columns(Base.metadata)
+    _add_missing_indexes(Base.metadata)
     activity.install()
 
 
@@ -51,3 +65,11 @@ def _add_missing_columns(metadata: MetaData) -> None:
             if missing:
                 for index in table.indexes:
                     index.create(connection, checkfirst=True)
+
+
+def _add_missing_indexes(metadata: MetaData) -> None:
+    """Create indexes that were added to a model after its table already existed (create_all skips those)."""
+    with engine.begin() as connection:
+        for table in metadata.sorted_tables:
+            for index in table.indexes:
+                index.create(connection, checkfirst=True)

@@ -12,7 +12,7 @@ class Task(EntityMixin, ArchivableMixin, Base):
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(32), default="todo")
+    status: Mapped[str] = mapped_column(String(32), default="todo", index=True)
     priority: Mapped[str] = mapped_column(String(16), default="medium")
-    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("projects.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -103,7 +103,7 @@ export function GlobalSearch({ open, onOpenChange, pages }: { open: boolean; onO
       <DialogContent variant="center" hideClose aria-describedby={undefined}
         className="top-[12vh] max-w-2xl translate-y-0 gap-0 overflow-hidden p-0 data-[state=open]:slide-in-from-top-2">
         <DialogTitle className="sr-only">{t('shell.searchTitle')}</DialogTitle>
-        <Command shouldFilter={false} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input]]:h-14 [&_[cmdk-input]]:text-base">
+        <Command shouldFilter={false} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-input]]:h-14 [&_[cmdk-input]]:text-base">
           <CommandInput value={query} onValueChange={setQuery} placeholder={t('search.placeholder')} />
           <div className="flex gap-1 overflow-x-auto border-b px-3 py-2 [scrollbar-width:none]">
             {(['all', ...searchable.filter((type) => type !== 'folder'), 'tag'] as Scope[]).map((value) => {

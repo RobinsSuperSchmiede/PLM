@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/components/i18n-provider';
 import { api, ApiError } from '@/lib/api';
 import { resourceOf } from '@/lib/entities';
+import { readSnapshot, writeSnapshot } from '@/lib/snapshot-store';
 import type {
   AppSettings, Collections, EntityLink, EntityRef, EntityType, ListItem, ResourceItem, ResourceName, SettingsUpdate, Tag, TagAssignment, WorkspaceList,
 } from '@/lib/types';
@@ -28,26 +29,41 @@ const emptyCollections: Collections = {
 
 const resourceNames = Object.keys(emptyCollections) as ResourceName[];
 
-// The last loaded workspace is kept in this browser so pages render instantly on the next visit,
-// then the server data replaces it (stale-while-revalidate).
-const snapshotKey = 'anamnesies.snapshot.v1';
-type Snapshot = { data: Collections; tags: Tag[]; tagAssignments: TagAssignment[]; links: EntityLink[] };
+/** Tags and links come as null from /sync when the client already has `organization_version`. */
+type Organization = { settings: AppSettings; organization_version: string; tags: Tag[] | null; tag_assignments: TagAssignment[] | null; links: EntityLink[] | null };
+/** GET /bootstrap: the whole workspace in one response. */
+type BootstrapResponse = Organization & { server_time: string; data: Collections };
+/** GET /sync: per collection the ids that exist now (in list order) and only the entries changed since the last sync. */
+type SyncResponse = Organization & { server_time: string; changes: { [R in ResourceName]?: { ids: string[]; changed: Collections[R] } } };
 
-function readSnapshot(): Snapshot | null {
-  try {
-    const raw = window.localStorage.getItem(snapshotKey);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Snapshot;
-    return { ...parsed, data: { ...emptyCollections, ...parsed.data } };
-  } catch {
-    return null;
+/** Entries created or removed in this tab while a sync request was on its way; the response cannot know them yet. */
+type LocalChanges = { added: Map<string, ResourceName>; removed: Set<string> };
+
+/**
+ * Apply a /sync response to the cached collections. Returns null when the cache does not fit the
+ * server (an id is listed that we neither have nor received), so the caller loads everything again.
+ */
+function mergeChanges(current: Collections, changes: SyncResponse['changes'], local: LocalChanges): Collections | null {
+  const next = { ...current };
+  for (const name of resourceNames) {
+    const change = changes[name];
+    if (!change) continue;
+    const existing = current[name] as { id: string }[];
+    const byId = new Map(existing.map((item) => [item.id, item]));
+    for (const item of change.changed as { id: string }[]) byId.set(item.id, item);
+    const listed = new Set(change.ids);
+    const items: { id: string }[] = existing.filter((item) => local.added.get(item.id) === name && !listed.has(item.id));
+    for (const id of change.ids) {
+      if (local.removed.has(id)) continue;
+      const item = byId.get(id);
+      if (!item) return null;
+      items.push(item);
+    }
+    // Keep the array identity when nothing changed, so memoized views do not recompute.
+    const unchanged = items.length === existing.length && items.every((item, index) => item === existing[index]);
+    if (!unchanged) (next as Record<ResourceName, unknown>)[name] = items;
   }
-}
-
-function writeSnapshot(snapshot: Snapshot) {
-  try {
-    window.localStorage.setItem(snapshotKey, JSON.stringify(snapshot));
-  } catch { /* quota exceeded or storage unavailable – the cache is optional */ }
+  return next;
 }
 
 type WorkspaceContextValue = {
@@ -122,42 +138,98 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setLinks(loadedLinks);
   }, []);
 
-  const reload = useCallback(async () => {
+  /** Fingerprint of the tags and links the server last sent; /sync skips them while it still matches. */
+  const organizationVersionRef = useRef<string | null>(null);
+  /** The lists that fingerprint describes (by identity), to notice local edits made since. */
+  const organizationRef = useRef<{ tags: Tag[] | null; tagAssignments: TagAssignment[] | null; links: EntityLink[] | null }>({ tags: null, tagAssignments: null, links: null });
+  const applyOrganization = useCallback((body: Organization) => {
+    if (body.tags && body.tag_assignments && body.links) {
+      setTagList(body.tags);
+      setTagAssignments(body.tag_assignments);
+      setLinks(body.links);
+      organizationRef.current = { tags: body.tags, tagAssignments: body.tag_assignments, links: body.links };
+    }
+    organizationVersionRef.current = body.organization_version;
+    applySettings(body.settings);
+  }, [applySettings]);
+
+  /** Server time of the state in memory; the next sync asks for changes since then. */
+  const [syncedAt, setSyncedAt] = useState<string | null>(null);
+  const localChangesRef = useRef<LocalChanges | null>(null);
+
+  /** One request for the whole workspace. */
+  const loadEverything = useCallback(async () => {
+    const body = await api.get<BootstrapResponse>('/bootstrap');
+    commit(() => ({ ...emptyCollections, ...body.data }));
+    applyOrganization(body);
+    setSyncedAt(body.server_time);
+  }, [applyOrganization, commit]);
+
+  /** Only what changed since `since`; falls back to a full load if the cache does not match the server. */
+  const loadChanges = useCallback(async (since: string, organizationVersion: string | null) => {
+    const local: LocalChanges = { added: new Map(), removed: new Set() };
+    localChangesRef.current = local;
+    try {
+      const known = organizationVersion ? `&organization=${encodeURIComponent(organizationVersion)}` : '';
+      const body = await api.get<SyncResponse>(`/sync?since=${encodeURIComponent(since)}${known}`);
+      const merged = mergeChanges(dataRef.current, body.changes, local);
+      if (!merged) {
+        await loadEverything();
+        return;
+      }
+      commit(() => merged);
+      applyOrganization(body);
+      setSyncedAt(body.server_time);
+    } finally {
+      if (localChangesRef.current === local) localChangesRef.current = null;
+    }
+  }, [applyOrganization, commit, loadEverything]);
+
+  const finishLoading = useCallback(async (load: () => Promise<void>) => {
     setError(null);
     try {
-      const [collections, loadedSettings] = await Promise.all([
-        Promise.all(resourceNames.map((name) => api.get<Collections[typeof name]>(`/${name}`))),
-        api.get<AppSettings>('/settings'),
-        reloadOrganization(),
-      ]);
-      const next = Object.fromEntries(resourceNames.map((name, index) => [name, collections[index]])) as Collections;
-      commit(() => next);
-      applySettings(loadedSettings);
+      await load();
     } catch (loadError) {
       setError(errorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [applySettings, commit, reloadOrganization]);
+  }, []);
+
+  /** Explicit reload (e.g. "Retry"): always the complete workspace. */
+  const reload = useCallback(() => finishLoading(loadEverything), [finishLoading, loadEverything]);
 
   useEffect(() => {
-    const snapshot = readSnapshot();
-    if (snapshot) {
-      commit(() => snapshot.data);
+    let cancelled = false;
+    void readSnapshot().then((snapshot) => {
+      if (cancelled) return;
+      if (!snapshot) {
+        void finishLoading(loadEverything);
+        return;
+      }
+      // Show the cached workspace at once, then fetch what changed since it was stored.
+      commit(() => ({ ...emptyCollections, ...snapshot.data }));
       setTagList(snapshot.tags);
       setTagAssignments(snapshot.tagAssignments);
       setLinks(snapshot.links);
+      organizationRef.current = { tags: snapshot.tags, tagAssignments: snapshot.tagAssignments, links: snapshot.links };
+      if (snapshot.settings) applySettings(snapshot.settings);
       setLoading(false);
-    }
-    void reload();
-  }, [commit, reload]);
+      void finishLoading(() => loadChanges(snapshot.syncedAt, snapshot.organizationVersion ?? null).catch(loadEverything));
+    });
+    return () => { cancelled = true; };
+  }, [applySettings, commit, finishLoading, loadChanges, loadEverything]);
 
   // Persist the current state shortly after changes settle.
   useEffect(() => {
-    if (loading || error) return;
-    const timeout = window.setTimeout(() => writeSnapshot({ data, tags, tagAssignments: tagAssignments, links }), 1500);
+    if (loading || error || !syncedAt) return;
+    const timeout = window.setTimeout(() => void writeSnapshot({
+      data, tags, tagAssignments, links, settings, syncedAt,
+      // Local tag and link edits are not part of the server's fingerprint, so only a version that still describes this state is kept.
+      organizationVersion: organizationRef.current.tags === tags && organizationRef.current.tagAssignments === tagAssignments && organizationRef.current.links === links ? organizationVersionRef.current : null,
+    }), 1500);
     return () => window.clearTimeout(timeout);
-  }, [data, error, links, loading, tagAssignments, tags]);
+  }, [data, error, links, loading, settings, syncedAt, tagAssignments, tags]);
 
   const reportError = useCallback((failure: unknown) => {
     toast.error(t('common.errorSaving', { message: errorMessage(failure) }));
@@ -166,6 +238,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const create = useCallback<WorkspaceContextValue['create']>(async (resource, payload) => {
     try {
       const created = await api.post<ResourceItem<typeof resource>>(`/${resource}`, payload);
+      localChangesRef.current?.added.set(created.id, resource);
       commit((current) => ({ ...current, [resource]: [created, ...current[resource]] }));
       return created;
     } catch (failure) {
@@ -203,6 +276,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const remove = useCallback<WorkspaceContextValue['remove']>(async (resource, id) => {
     const previous = dataRef.current[resource];
     commit((current) => ({ ...current, [resource]: (current[resource] as { id: string }[]).filter((item) => item.id !== id) }));
+    localChangesRef.current?.removed.add(id);
     try {
       await api.delete(`/${resource}/${id}`);
       // The server drops tags and links of deleted entries and detaches their contents.
@@ -296,6 +370,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const resource = resourceOf(type);
     const previous = dataRef.current[resource];
     commit((current) => ({ ...current, [resource]: (current[resource] as { id: string }[]).filter((item) => item.id !== id) }));
+    localChangesRef.current?.removed.add(id);
     try {
       await api.post(`/archive/${type}/${id}`);
       // Archiving a folder also archives its notes and subfolders.
@@ -322,6 +397,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, [reloadResource, reportError]);
 
   const insert = useCallback<WorkspaceContextValue['insert']>((resource, item) => {
+    localChangesRef.current?.added.set(item.id, resource);
     commit((current) => ({ ...current, [resource]: [item, ...(current[resource] as { id: string }[]).filter((entry) => entry.id !== item.id)] }));
   }, [commit]);
 

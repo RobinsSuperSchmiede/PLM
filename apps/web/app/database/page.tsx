@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PaneHeader, SidebarItem, SidebarSection, SplitLayout } from '@/components/split-layout';
 import { CountUp, EmptyState, PageSkeleton, SearchInput } from '@/components/workspace-ui';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import type { DbRows, DbSchema, DbTable } from '@/lib/types';
 import { cn, formatBytes } from '@/lib/utils';
@@ -30,7 +30,7 @@ function DatabaseExplorer() {
   const { t, language } = useI18n();
   const router = useRouter();
   const params = useSearchParams();
-  const [schema, setSchema] = useState<DbSchema | null>(null);
+  const [schema, setSchema] = useState<DbSchema | null>(() => peek<DbSchema>('/db/schema') ?? null);
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<Tab>('data');
   const selectedName = params.get('table');
@@ -73,10 +73,10 @@ function DatabaseExplorer() {
         actions={(
           <>
             {selected && (
-              <div className="flex gap-1 rounded-lg bg-muted p-1" role="tablist">
+              <div className="flex gap-0.5 rounded-full ds-glass p-[3px]" role="tablist">
                 {(['data', 'columns', 'relations', 'diagram'] as const).map((value) => (
                   <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}
-                    className={cn('rounded-md px-3 py-1.5 text-xs font-medium transition-all', tab === value ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                    className={cn('h-[22px] rounded-full px-3 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds', tab === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
                     {t(`dbx.tab${value[0].toUpperCase()}${value.slice(1)}` as 'dbx.tabData')}
                   </button>
                 ))}
@@ -122,12 +122,12 @@ function Overview({ schema, relations, onSelect }: { schema: DbSchema; relations
         {stats.map((stat) => (
           <Card key={stat.label} className="p-4">
             <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight"><CountUp value={stat.value} /></p>
+            <p className="mt-2 text-2xl font-medium tabular-nums"><CountUp value={stat.value} /></p>
           </Card>
         ))}
         <Card className="p-4">
           <p className="text-xs font-medium text-muted-foreground">{t('dbx.size')}</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight">{formatBytes(schema.size, t('dbx.unknown'))}</p>
+          <p className="mt-2 text-2xl font-medium tabular-nums">{formatBytes(schema.size, t('dbx.unknown'))}</p>
         </Card>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
@@ -156,7 +156,7 @@ function BarList({ title, items, max, onSelect, tone }: { title: string; items: 
           <button key={item.name} type="button" onClick={() => onSelect(item.name)} className="group block w-full text-left">
             <span className="flex justify-between text-xs"><span className="font-mono group-hover:underline">{item.name}</span><span className="tabular-nums text-muted-foreground">{item.label}</span></span>
             <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted">
-              <span className={cn('block h-full rounded-full transition-[width] duration-700 ease-[var(--ease-out)]', tone)} style={{ width: `${Math.max(3, (item.value / max) * 100)}%` }} />
+              <span className={cn('block h-full rounded-full transition-[width] duration-700 ease-ds', tone)} style={{ width: `${Math.max(3, (item.value / max) * 100)}%` }} />
             </span>
           </button>
         ))}
@@ -426,26 +426,26 @@ function ErDiagram({ schema, focus, onSelect }: { schema: DbSchema; focus?: stri
           ? `M ${from.x + BOX_WIDTH} ${y1} C ${from.x + BOX_WIDTH + bend} ${y1}, ${from.x + BOX_WIDTH + bend} ${y2}, ${from.x + BOX_WIDTH} ${y2}`
           : `M ${x1} ${y1} C ${x1 + (leftToRight ? -bend : bend)} ${y1}, ${x2 + (leftToRight ? bend : -bend)} ${y2}, ${x2} ${y2}`;
         const active = hover === edge.from || hover === edge.to || focus === edge.from || focus === edge.to;
-        return <path key={`${edge.from}.${edge.column}`} d={path} fill="none" stroke={active ? 'hsl(var(--info))' : 'hsl(var(--muted-foreground))'} strokeOpacity={active ? 0.9 : 0.35} strokeWidth={active ? 1.5 : 1} />;
+        return <path key={`${edge.from}.${edge.column}`} d={path} fill="none" stroke={active ? 'hsl(var(--info))' : 'hsl(var(--muted-foreground) / var(--muted-foreground-a))'} strokeOpacity={active ? 0.9 : 0.35} strokeWidth={active ? 1.5 : 1} />;
       })}
       {[...layout.boxes.values()].map(({ x, y, height, table }) => (
         <g key={table.name} transform={`translate(${x},${y})`} className="cursor-pointer" onClick={() => onSelect(table.name)}
           onMouseEnter={() => setHover(table.name)} onMouseLeave={() => setHover(null)}>
-          <rect width={BOX_WIDTH} height={height} rx={8} fill="hsl(var(--card))" stroke={focus === table.name || hover === table.name ? 'hsl(var(--info))' : 'hsl(var(--border))'} strokeWidth={focus === table.name ? 1.5 : 1} />
-          <rect width={BOX_WIDTH} height={HEAD} rx={8} fill="hsl(var(--muted))" />
-          <rect y={HEAD - 8} width={BOX_WIDTH} height={8} fill="hsl(var(--muted))" />
+          <rect width={BOX_WIDTH} height={height} rx={8} fill="hsl(var(--popover) / var(--popover-a))" stroke={focus === table.name || hover === table.name ? 'hsl(var(--info))' : 'hsl(var(--border) / var(--border-a))'} strokeWidth={focus === table.name ? 1.5 : 1} />
+          <rect width={BOX_WIDTH} height={HEAD} rx={8} fill="hsl(var(--muted) / var(--muted-a))" />
+          <rect y={HEAD - 8} width={BOX_WIDTH} height={8} fill="hsl(var(--muted) / var(--muted-a))" />
           <text x={10} y={18} fontSize={12} fontWeight={600} fill="hsl(var(--foreground))" fontFamily="ui-monospace, monospace">{table.name}</text>
-          <text x={BOX_WIDTH - 10} y={18} fontSize={10} textAnchor="end" fill="hsl(var(--muted-foreground))">{table.rows}</text>
+          <text x={BOX_WIDTH - 10} y={18} fontSize={10} textAnchor="end" fill="hsl(var(--muted-foreground) / var(--muted-foreground-a))">{table.rows}</text>
           {table.columns.slice(0, MAX_COLUMNS).map((column, index) => (
             <g key={column.name} transform={`translate(0,${HEAD + index * ROW})`}>
               <text x={10} y={13} fontSize={11} fontFamily="ui-monospace, monospace"
                 fill={column.primary_key ? 'hsl(var(--warning))' : column.foreign_key ? 'hsl(var(--info))' : 'hsl(var(--foreground))'} fillOpacity={column.primary_key || column.foreign_key ? 1 : 0.8}>
                 {column.primary_key ? '◆ ' : column.foreign_key ? '→ ' : '  '}{column.name}
               </text>
-              <text x={BOX_WIDTH - 10} y={13} fontSize={10} textAnchor="end" fill="hsl(var(--muted-foreground))" fontFamily="ui-monospace, monospace">{column.type.toLowerCase().slice(0, 12)}</text>
+              <text x={BOX_WIDTH - 10} y={13} fontSize={10} textAnchor="end" fill="hsl(var(--muted-foreground) / var(--muted-foreground-a))" fontFamily="ui-monospace, monospace">{column.type.toLowerCase().slice(0, 12)}</text>
             </g>
           ))}
-          {table.columns.length > MAX_COLUMNS && <text x={10} y={HEAD + MAX_COLUMNS * ROW + 13} fontSize={10} fill="hsl(var(--muted-foreground))">+{table.columns.length - MAX_COLUMNS}</text>}
+          {table.columns.length > MAX_COLUMNS && <text x={10} y={HEAD + MAX_COLUMNS * ROW + 13} fontSize={10} fill="hsl(var(--muted-foreground) / var(--muted-foreground-a))">+{table.columns.length - MAX_COLUMNS}</text>}
         </g>
       ))}
     </svg>

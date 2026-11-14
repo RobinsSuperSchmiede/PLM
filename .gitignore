@@ -1,6 +1,7 @@
 # Node / frontend
 node_modules/
 .next/
+.next-prod/
 out/
 coverage/
 .env.local
@@ -21,6 +22,8 @@ __pycache__/
 
 # Docker
 *.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 *.tsbuildinfo
 *.egg-info/
 

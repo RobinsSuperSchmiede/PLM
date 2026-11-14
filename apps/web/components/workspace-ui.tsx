@@ -41,12 +41,11 @@ export function EmptyState({ title, description, action, icon: Icon = Inbox, cla
   className?: string;
 }) {
   return (
-    <div className={cn('group flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed bg-card/40 px-6 py-12 text-center', className)}>
+    <div className={cn('group flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-foreground/20 bg-muted px-6 py-12 text-center', className)}>
       <div className="relative mb-4">
-        <div className="absolute inset-0 rounded-2xl bg-[hsl(var(--glow)/0.22)] blur-xl" aria-hidden="true" />
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border bg-background shadow-sm">
-          <DotLoader size={30} animated={false} hoverAnimated className="text-muted-foreground transition-colors duration-300 group-hover:text-info" />
-          <span className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-lg border bg-background shadow-sm">
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-field shadow-sm">
+          <DotLoader size={30} animated={false} hoverAnimated className="text-muted-foreground transition-colors duration-200 group-hover:text-foreground" />
+          <span className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-field shadow-sm">
             <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
           </span>
         </div>
@@ -71,7 +70,7 @@ export function PageSkeleton() {
       </div>
       <Skeleton className="h-64 rounded-xl" />
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <DotLoader size={40} className="text-info duration-500 animate-in fade-in" />
+        <DotLoader size={40} className="text-muted-foreground duration-500 animate-in fade-in" />
       </div>
     </div>
   );
@@ -99,25 +98,32 @@ export function DeleteButton({ name, onConfirm, size = 'icon-sm', label }: {
   label?: string;
 }) {
   const { t } = useI18n();
+  const button = useRef<HTMLButtonElement>(null);
+  // The confirmation dialog is only built once it is needed: long lists render one button per row,
+  // and a full dialog tree for each of them made page changes noticeably slower.
+  const [open, setOpen] = useState(false);
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size={size} className="text-muted-foreground hover:text-destructive" aria-label={`${t('common.delete')}: ${name}`}>
-          <Trash2 />
-          {label}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t('common.confirmDeleteTitle')}</AlertDialogTitle>
-          <AlertDialogDescription>{t('common.confirmDeleteText', { name })}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>{t('common.delete')}</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <Button ref={button} variant="ghost" size={size} className="text-muted-foreground hover:text-destructive" aria-label={`${t('common.delete')}: ${name}`}
+        aria-haspopup="dialog" onClick={(event) => { event.stopPropagation(); setOpen(true); }}>
+        <Trash2 />
+        {label}
+      </Button>
+      {open && (
+        <AlertDialog open onOpenChange={setOpen}>
+          <AlertDialogContent onCloseAutoFocus={(event) => { event.preventDefault(); button.current?.focus(); }}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('common.confirmDeleteTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('common.confirmDeleteText', { name })}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={onConfirm}>{t('common.delete')}</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }
 
@@ -169,7 +175,7 @@ export function UrlRow({ label, value }: { label: string; value: string }) {
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 truncate rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs">{value}</code>
+        <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-xs">{value}</code>
         <CopyButton value={value} />
       </div>
     </div>
@@ -180,7 +186,7 @@ export function TokenField({ value }: { value: string }) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <button type="button" onClick={() => setVisible((current) => !current)} className="flex-1 truncate rounded-md border bg-muted/50 px-3 py-1.5 text-left font-mono text-xs" aria-label="Toggle token visibility">
+      <button type="button" onClick={() => setVisible((current) => !current)} className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 text-left font-mono text-xs" aria-label="Toggle token visibility">
         <KeyRound className="mr-2 inline h-3.5 w-3.5 text-muted-foreground" />
         {visible ? value : '•'.repeat(32)}
       </button>

@@ -59,8 +59,8 @@ export default function DocsPage() {
       </>
     )}>
       <article ref={scroller} key={section.id} className="mx-auto max-w-3xl px-6 pb-24 pt-10 duration-300 animate-in fade-in slide-in-from-bottom-1 sm:px-10">
-        <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-brand"><BookMarked className="h-3.5 w-3.5" />{t('nav.docs')} · {index + 1}/{sections.length}</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{section.title}</h1>
+        <p className="flex items-center gap-2 text-[11px] font-medium text-brand"><BookMarked className="h-3.5 w-3.5" />{t('nav.docs')} · {index + 1}/{sections.length}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{section.title}</h1>
         <p className="mt-2 text-lg text-muted-foreground">{section.summary}</p>
         <div className="mt-8 space-y-5 text-[15px] leading-7">
           {section.blocks.map((block, position) => <Block key={position} block={block} />)}
@@ -81,7 +81,7 @@ function Block({ block }: { block: DocBlock }) {
       </div>
     );
   }
-  if ('code' in block) return <pre className="overflow-x-auto rounded-xl border bg-muted/50 p-4 font-mono text-[13px] leading-6">{block.code}</pre>;
+  if ('code' in block) return <pre className="overflow-x-auto rounded-xl bg-muted p-4 font-mono text-[13px] leading-6">{block.code}</pre>;
   if ('list' in block) return <ul className="list-disc space-y-1.5 pl-5 marker:text-brand">{block.list.map((item) => <li key={item}>{item}</li>)}</ul>;
   if ('steps' in block) {
     return (

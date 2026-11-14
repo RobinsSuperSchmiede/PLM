@@ -2,17 +2,19 @@ from fastapi import APIRouter
 
 from app.api.v1.crud_router import build_crud_router
 from app.api.v1.endpoints import auth, files, health, insights, lists, organization, overview, settings, telegram
-from app.models import Event, Folder, Idea, KnowledgeArticle, Meeting, Note, Project, Record, Reminder, Task
+from app.api.v1.endpoints.sync import SyncResource, build_sync_router
+from app.models import Event, Folder, Idea, KnowledgeArticle, Meeting, Note, Project, Record, Reminder, StoredFile, Task, WorkspaceList
 from app.schemas.event import EventCreate, EventRead, EventUpdate
 from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate
 from app.schemas.knowledge import KnowledgeCreate, KnowledgeRead, KnowledgeUpdate
 from app.schemas.meeting import MeetingCreate, MeetingRead, MeetingUpdate
 from app.schemas.note import NoteCreate, NoteRead, NoteUpdate
-from app.schemas.organization import FolderCreate, FolderRead, FolderUpdate
+from app.schemas.organization import FileRead, FolderCreate, FolderRead, FolderUpdate
 from app.schemas.notification import ReminderCreate, ReminderRead, ReminderUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.record import RecordCreate, RecordRead, RecordUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.workspace_list import ListRead
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
@@ -51,3 +53,9 @@ for path, model, create_schema, update_schema, read_schema, order_by, label in c
         ),
         tags=[path.strip("/")],
     )
+
+# Everything the web app keeps in memory, loaded with one request (/bootstrap) and refreshed with /sync.
+sync_resources = [SyncResource(path.strip("/"), model, read_schema, order_by) for path, model, _, _, read_schema, order_by, _ in crud_resources]
+sync_resources.append(SyncResource("lists", WorkspaceList, ListRead, (WorkspaceList.created_at.desc(),), incremental=False))
+sync_resources.append(SyncResource("files", StoredFile, FileRead, (StoredFile.created_at.desc(),)))
+api_router.include_router(build_sync_router(sync_resources))

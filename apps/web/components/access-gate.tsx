@@ -1,13 +1,21 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, LockKeyhole, Send } from 'lucide-react';
 
 import { DotLoader } from '@/components/dot-loader';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
-import { OtpInput, type OtpStatus } from '@/components/ui/otp-input';
+import type { OtpStatus } from '@/components/ui/otp-input';
 import { WorkspaceProvider } from '@/components/workspace-provider';
+
+// The code input brings the animation library (~48 kB gzipped) with it. It is only needed on the lock
+// screen, so it is loaded there instead of with every page of the unlocked app.
+const OtpInput = dynamic(() => import('@/components/ui/otp-input').then((module) => module.OtpInput), {
+  ssr: false,
+  loading: () => <div className="h-14" aria-hidden="true" />,
+});
 
 type Step = 'code' | 'telegram';
 const RESEND_SECONDS = 30;
@@ -140,7 +148,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   if (granted === null) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center" aria-busy="true">
-        <DotLoader size={36} label={t('common.loading')} className="text-brand" />
+        <DotLoader size={36} label={t('common.loading')} className="text-muted-foreground" />
       </main>
     );
   }
@@ -148,15 +156,14 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
   if (!granted) {
     const telegramStep = step === 'telegram';
     return (
-      <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-background px-5">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(40rem_24rem_at_50%_-6rem,hsl(var(--brand)/0.18),transparent_70%)]" aria-hidden="true" />
+      <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-5">
         <div key={step} className="relative w-full max-w-sm text-center duration-500 animate-in fade-in slide-in-from-bottom-2">
-          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border bg-card shadow-sm">
-            {telegramStep ? <Send className="h-6 w-6 text-brand" /> : <LockKeyhole className="h-6 w-6 text-brand" />}
+          <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-[18px] bg-card shadow-sm">
+            {telegramStep ? <Send className="h-6 w-6 text-brand" /> : <LockKeyhole className="h-5 w-5 text-brand" strokeWidth={1.6} />}
           </div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Anamnesies</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{telegramStep ? t('auth.secondTitle') : t('access.title')}</h1>
-          <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">{telegramStep ? t('auth.secondDescription') : t('access.description')}</p>
+          <p className="ds-label mb-2">Anamnesies</p>
+          <h1 className="text-[20px] font-semibold tracking-[-0.015em]">{telegramStep ? t('auth.secondTitle') : t('access.title')}</h1>
+          <p className="mx-auto mt-2 max-w-xs text-[13px] leading-[1.55] text-[hsl(var(--fg-2)/var(--fg-2-a))]">{telegramStep ? t('auth.secondDescription') : t('access.description')}</p>
 
           <div className="mt-8 flex justify-center">
             <OtpInput

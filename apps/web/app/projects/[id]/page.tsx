@@ -150,7 +150,7 @@ function ProjectWorkspace() {
               {kpis.map(({ label, value, suffix, icon: Icon }) => (
                 <Card key={label} className="p-4">
                   <p className="flex items-center justify-between text-xs font-medium text-muted-foreground">{label}<Icon className="h-3.5 w-3.5" /></p>
-                  <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight"><CountUp value={value} />{suffix}</p>
+                  <p className="mt-2 text-2xl font-medium tabular-nums"><CountUp value={value} />{suffix}</p>
                 </Card>
               ))}
             </div>
@@ -160,7 +160,7 @@ function ProjectWorkspace() {
                 <span className="text-muted-foreground">{scoped.tasks.length ? t('projects.progress', { done: done.length, total: scoped.tasks.length }) : t('projects.noTasks')}</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full rounded-full bg-success transition-[width] duration-700 ease-[var(--ease-out)]" style={{ width: `${percent}%` }} />
+                <div className="h-full rounded-full bg-success transition-[width] duration-700 ease-ds" style={{ width: `${percent}%` }} />
               </div>
             </Card>
 
@@ -238,7 +238,7 @@ function ProjectWorkspace() {
             {scoped.documents.length ? (
               <div className="stagger grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                 {scoped.documents.map((doc) => (
-                  <Link key={doc.id} href={entityHref('knowledge', doc.id)} className="card-hover rounded-xl border bg-card p-4">
+                  <Link key={doc.id} href={entityHref('knowledge', doc.id)} className="card-hover rounded-xl bg-card shadow-sm p-4">
                     <p className="flex items-center gap-2 font-medium"><BookOpen className="h-4 w-4 text-muted-foreground" />{doc.title}</p>
                     <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{markdownToPlainText(doc.content) || t('notes.noContent')}</p>
                     <EntityTags type="knowledge" id={doc.id} className="mt-3" plain />

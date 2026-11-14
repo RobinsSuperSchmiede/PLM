@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { EmptyState, PageHeader, PageSkeleton } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
-import { api } from '@/lib/api';
+import { api, peek } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
 import { entityHref, entityIcons, entityLabelKeys } from '@/lib/entities';
 import type { TelegramLogEntry, TelegramSettings } from '@/lib/types';
@@ -30,8 +30,8 @@ const commands = [
 export default function TelegramPage() {
   const { t, language } = useI18n();
   const { data } = useWorkspace();
-  const [settings, setSettings] = useState<TelegramSettings | null>(null);
-  const [log, setLog] = useState<TelegramLogEntry[] | null>(null);
+  const [settings, setSettings] = useState<TelegramSettings | null>(() => peek<TelegramSettings>('/telegram') ?? null);
+  const [log, setLog] = useState<TelegramLogEntry[] | null>(() => peek<TelegramLogEntry[]>('/telegram/messages?limit=200') ?? null);
   const [filter, setFilter] = useState<'all' | 'in' | 'out'>('all');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -80,7 +80,7 @@ export default function TelegramPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
                 <span className="relative flex h-3 w-3">
-                  {connected && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-50" />}
+                  
                   <span className={cn('relative inline-flex h-3 w-3 rounded-full', connected ? 'bg-success' : 'bg-muted-foreground/40')} />
                 </span>
                 <div className="min-w-0">
@@ -128,10 +128,10 @@ export default function TelegramPage() {
         <Card className="flex min-h-[520px] flex-col">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">{t('telegramHub.history')}</CardTitle>
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
+            <div className="flex gap-0.5 rounded-full ds-glass p-[3px]">
               {(['all', 'in', 'out'] as const).map((value) => (
                 <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)}
-                  className={cn('rounded-md px-2.5 py-1 text-xs font-medium transition-all', filter === value ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+                  className={cn('h-[22px] rounded-full px-2.5 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds', filter === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground')}>
                   {value === 'all' ? t('telegramHub.filterAll') : value === 'in' ? t('telegramHub.incoming') : t('telegramHub.outgoing')}
                 </button>
               ))}

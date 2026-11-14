@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
-import { ArrowRight, BellRing, CalendarDays, CheckSquare2, Clock3, FileText, FolderKanban, Lightbulb, Plus, Users } from 'lucide-react';
+import { ArrowRight, BellRing, CalendarDays, Clock3, Plus, Users } from 'lucide-react';
 
 import { DashboardInsights } from '@/components/dashboard-insights';
 import { useI18n } from '@/components/i18n-provider';
@@ -38,15 +38,13 @@ export default function DashboardPage() {
     .filter((entry) => entry.date >= today)
     .sort((a, b) => `${a.date}${a.time ?? ''}`.localeCompare(`${b.date}${b.time ?? ''}`));
   const recentNotes = [...data.notes].sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 4);
-  const hour = new Date().getHours();
-  const greeting = hour < 11 ? t('dashboard.morning') : hour < 18 ? t('dashboard.afternoon') : t('dashboard.evening');
   const dayLabels = { today: t('common.today'), tomorrow: t('common.tomorrow'), yesterday: t('common.yesterday') };
 
   const stats = [
-    { label: t('dashboard.openTasks'), value: openTasks.length, note: t('dashboard.dueToday', { count: dueToday }), icon: CheckSquare2, href: '/tasks' },
-    { label: t('dashboard.upcomingEvents'), value: agenda.filter((entry) => entry.date <= inAWeek).length, note: t('dashboard.next7Days'), icon: CalendarDays, href: '/calendar' },
-    { label: t('dashboard.activeProjects'), value: data.projects.filter((project) => project.status === 'active').length, note: t('dashboard.ofTotal', { count: data.projects.length }), icon: FolderKanban, href: '/projects' },
-    { label: t('dashboard.ideas'), value: data.ideas.filter((idea) => idea.status !== 'archived').length, note: t('dashboard.capturedIdeas'), icon: Lightbulb, href: '/ideas' },
+    { label: t('dashboard.openTasks'), value: openTasks.length, note: t('dashboard.dueToday', { count: dueToday }), href: '/tasks' },
+    { label: t('dashboard.upcomingEvents'), value: agenda.filter((entry) => entry.date <= inAWeek).length, note: t('dashboard.next7Days'), href: '/calendar' },
+    { label: t('dashboard.activeProjects'), value: data.projects.filter((project) => project.status === 'active').length, note: t('dashboard.ofTotal', { count: data.projects.length }), href: '/projects' },
+    { label: t('dashboard.ideas'), value: data.ideas.filter((idea) => idea.status !== 'archived').length, note: t('dashboard.capturedIdeas'), href: '/ideas' },
   ];
 
   async function quickAdd(event: FormEvent<HTMLFormElement>) {
@@ -59,19 +57,18 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={greeting} description={`${formatDate(today, language, { weekday: 'long', day: 'numeric', month: 'long' })} · ${t('dashboard.subtitle')}`} />
+      <PageHeader title={t('nav.dashboard')} description={formatDate(today, language, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
 
-      <section className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        {stats.map(({ label, value, note, icon: Icon, href }) => (
-          <Link key={href} href={href} className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Card className="card-hover h-full">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardDescription className="font-medium">{label}</CardDescription>
-                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground"><Icon className="h-3.5 w-3.5" /></span>
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {stats.map(({ label, value, note, href }) => (
+          <Link key={href} href={href} className="group rounded-xl focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+            <Card className="h-full transition-shadow duration-200 ease-ds group-hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardDescription>{label}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl"><CountUp value={value} /></p>
-                <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+                <p className="text-[28px] font-medium leading-none tabular-nums"><CountUp value={value} /></p>
+                <p className="mt-2 text-xs text-muted-foreground">{note}</p>
               </CardContent>
             </Card>
           </Link>
@@ -81,26 +78,26 @@ export default function DashboardPage() {
       <section className="mt-6 grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <CardTitle className="text-base">{t('dashboard.focus')}</CardTitle>
               <CardDescription>{t('dashboard.focusDesc')}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild><Link href="/tasks">{t('dashboard.viewAll')}<ArrowRight /></Link></Button>
           </CardHeader>
-          <CardContent className="space-y-1">
-            <form onSubmit={quickAdd} className="mb-3 flex gap-2">
+          <CardContent className="space-y-0.5">
+            <form onSubmit={quickAdd} className="mb-4 flex gap-2">
               <Input value={quickTitle} onChange={(event) => setQuickTitle(event.target.value)} placeholder={t('dashboard.quickAdd')} aria-label={t('dashboard.quickAdd')} />
               <Button type="submit" size="icon" variant="secondary" aria-label={t('tasks.new')} disabled={!quickTitle.trim()}><Plus /></Button>
             </form>
             {focusTasks.map((task) => {
               const overdue = task.due_date !== null && task.due_date < today;
               return (
-                <div key={task.id} className="row-enter flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+                <div key={task.id} className="row-enter flex h-9 items-center gap-3 rounded-md px-2 transition-colors duration-150 hover:bg-accent">
                   <Checkbox checked={false} onCheckedChange={() => void update('tasks', task.id, { status: 'done' })} aria-label={`${t('tasks.done')}: ${task.title}`} />
-                  <span className="min-w-0 flex-1 truncate text-sm">{task.title}</span>
+                  <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
                   {task.priority === 'high' && <Badge variant="destructive">{t('tasks.high')}</Badge>}
                   {task.due_date && (
-                    <span className={overdue ? 'text-xs font-medium text-destructive' : 'text-xs text-muted-foreground'}>
+                    <span className={overdue ? 'font-mono text-xs tabular-nums text-destructive' : 'font-mono text-xs tabular-nums text-muted-foreground'}>
                       {relativeDay(task.due_date, language, dayLabels)}
                     </span>
                   )}
@@ -113,21 +110,21 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <CardTitle className="text-base">{t('dashboard.upcoming')}</CardTitle>
               <CardDescription>{t('dashboard.upcomingDesc')}</CardDescription>
             </div>
             <Button variant="ghost" size="icon-sm" asChild aria-label={t('nav.calendar')}><Link href="/calendar"><CalendarDays /></Link></Button>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="space-y-0.5">
             {agenda.slice(0, 6).map((entry) => (
-              <Link key={entry.id} href={entry.kind === 'meeting' ? '/meetings' : entry.kind === 'reminder' ? '/reminders' : `/calendar?date=${entry.date}`} className="group flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+              <Link key={entry.id} href={entry.kind === 'meeting' ? '/meetings' : entry.kind === 'reminder' ? '/reminders' : `/calendar?date=${entry.date}`} className="group flex items-center gap-3 rounded-md px-2 py-2 transition-colors duration-150 hover:bg-accent">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
                   {entry.kind === 'meeting' ? <Users className="h-4 w-4 text-muted-foreground" /> : entry.kind === 'reminder' ? <BellRing className="h-4 w-4 text-muted-foreground" /> : <Clock3 className="h-4 w-4 text-muted-foreground" />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm">{entry.title}</p>
-                  <p className="text-xs text-muted-foreground">{relativeDay(entry.date, language, dayLabels)}{entry.time ? ` · ${entry.time}` : ''}</p>
+                  <p className="truncate text-[13px]">{entry.title}</p>
+                  <p className="font-mono text-xs tabular-nums text-muted-foreground">{relativeDay(entry.date, language, dayLabels)}{entry.time ? ` · ${entry.time}` : ''}</p>
                 </div>
               </Link>
             ))}
@@ -138,7 +135,7 @@ export default function DashboardPage() {
 
       <Card className="mt-6">
         <CardHeader className="flex flex-row items-start justify-between space-y-0">
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <CardTitle className="text-base">{t('dashboard.recentNotes')}</CardTitle>
             <CardDescription>{t('dashboard.recentNotesDesc')}</CardDescription>
           </div>
@@ -146,15 +143,12 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           {recentNotes.length ? (
-            <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {recentNotes.map((note) => (
-                <Link key={note.id} href={`/notes?id=${note.id}`} className="card-hover rounded-lg border bg-background/50 p-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <p className="truncate text-sm font-medium">{note.title || t('common.untitled')}</p>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{markdownToPlainText(note.content) || t('notes.noContent')}</p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">{formatDateTime(note.updated_at, language)}</p>
+                <Link key={note.id} href={`/notes?id=${note.id}`} className="rounded-md bg-muted p-4 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+                  <p className="truncate text-[13px] font-medium">{note.title || t('common.untitled')}</p>
+                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-[hsl(var(--fg-2)/var(--fg-2-a))]">{markdownToPlainText(note.content) || t('notes.noContent')}</p>
+                  <p className="mt-3 font-mono text-[11px] tabular-nums text-muted-foreground">{formatDateTime(note.updated_at, language)}</p>
                 </Link>
               ))}
             </div>

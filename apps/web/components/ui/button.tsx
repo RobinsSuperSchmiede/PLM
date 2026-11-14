@@ -4,24 +4,28 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
+/**
+ * Design system button: pill shaped, no border, glass by default.
+ * Heights 22 / 28 / 32 px, text 12 / 13 / 14 px at weight 450, icons 13 / 15 px.
+ */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-200 ease-[var(--ease-out)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1 focus-visible:ring-offset-background active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-0 font-book leading-none tracking-[-0.005em] transition-[background-color,box-shadow,transform,color,opacity] duration-600 ease-ds hover:-translate-y-[0.5px] active:scale-[0.98] active:duration-150 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-[15px] [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'btn-sheen bg-primary text-primary-foreground shadow-sm shadow-black/10 hover:bg-primary/90 hover:shadow-md',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        outline: 'border border-input bg-background/60 shadow-sm hover:border-foreground/15 hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: 'bg-primary text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-hover))] hover:shadow-md',
+        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md',
+        outline: 'ds-glass text-foreground hover:bg-glass-hover hover:shadow-md',
+        secondary: 'ds-glass text-foreground hover:bg-glass-hover hover:shadow-md',
+        ghost: 'bg-transparent text-foreground hover:bg-accent',
+        link: 'h-auto px-0 text-foreground underline-offset-4 hover:translate-y-0 hover:underline',
       },
       size: {
-        default: 'h-10 rounded-lg px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-8',
-        icon: 'h-10 w-10 rounded-lg',
-        'icon-sm': 'h-8 w-8',
+        default: 'h-7 px-4 text-[13px]',
+        sm: 'h-[22px] gap-[5px] px-[11px] text-xs [&_svg]:size-[13px]',
+        lg: 'h-8 px-5 text-sm',
+        icon: 'h-7 w-7 p-0',
+        'icon-sm': 'h-[22px] w-[22px] p-0 [&_svg]:size-[13px]',
       },
     },
     defaultVariants: {

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useWorkspace } from '@/components/workspace-provider';
 import { allEntities, contentTypes, entityIcons, entityLabelKeys, resolveEntity, wikiLinks, type ResolvedEntity } from '@/lib/entities';
 import type { EntityRef, EntityType } from '@/lib/types';
-import { hueOf, tagStyle } from '@/lib/appearance';
+import { colorOf, hueOf } from '@/lib/appearance';
 import { cn } from '@/lib/utils';
 
 const NONE = 'none';
@@ -30,14 +30,14 @@ export function useEntityTags(type: EntityType, id: string | null | undefined): 
 /** `plain` renders text instead of a link, for chips that sit inside another link. */
 export function TagChip({ name, onRemove, className, plain }: { name: string; onRemove?: () => void; className?: string; plain?: boolean }) {
   const { t } = useI18n();
-  const label = <><Hash className="h-3 w-3 opacity-60" />{name}</>;
+  const label = <><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: colorOf(name) }} aria-hidden="true" />{name}</>;
   return (
-    <span style={tagStyle(name)} className={cn('inline-flex h-6 items-center gap-1 rounded-md border pl-1.5 text-xs font-medium transition-colors', onRemove ? 'pr-0.5' : 'pr-1.5', className)}>
-      {plain ? <span className="inline-flex items-center gap-0.5">{label}</span> : (
-        <Link href={`/tags/${encodeURIComponent(name)}`} className="inline-flex items-center gap-0.5 hover:underline" onClick={(event) => event.stopPropagation()}>{label}</Link>
+    <span className={cn('inline-flex h-[22px] items-center gap-1 rounded-full bg-muted pl-2 text-[11px] font-medium text-[hsl(var(--fg-2)/var(--fg-2-a))] transition-colors duration-150', onRemove ? 'pr-0.5' : 'pr-2', className)}>
+      {plain ? <span className="inline-flex items-center gap-1.5">{label}</span> : (
+        <Link href={`/tags/${encodeURIComponent(name)}`} className="inline-flex items-center gap-1.5 hover:text-foreground" onClick={(event) => event.stopPropagation()}>{label}</Link>
       )}
       {onRemove && (
-        <button type="button" onClick={onRemove} className="rounded p-0.5 hover:bg-background hover:text-foreground" aria-label={t('tags.remove', { name })}>
+        <button type="button" onClick={onRemove} className="rounded-full p-0.5 hover:bg-accent hover:text-foreground" aria-label={t('tags.remove', { name })}>
           <X className="h-3 w-3" />
         </button>
       )}
@@ -78,7 +78,7 @@ export function TagInput({ value, onChange, className, autoFocus }: { value: str
     <Popover open={open && (suggestions.length > 0 || Boolean(normalized))} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <div
-          className={cn('flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background/60 px-2 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-4 focus-within:ring-ring/10', className)}
+          className={cn('flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg bg-field shadow-sm px-2 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-[3px] focus-within:ring-ring', className)}
           onClick={() => input.current?.focus()}
         >
           {value.map((name) => <TagChip key={name} name={name} onRemove={() => onChange(value.filter((entry) => entry !== name))} />)}
@@ -271,12 +271,12 @@ function RelationGroup({ icon: Icon, title, items, onRemove }: { icon: typeof Li
   if (!items.length) return null;
   return (
     <div className="min-w-0 space-y-1.5">
-      <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"><Icon className="h-3.5 w-3.5" />{title}<span className="tabular-nums">{items.length}</span></p>
+      <p className="flex items-center gap-1.5 ds-label"><Icon className="h-3.5 w-3.5" />{title}<span className="tabular-nums">{items.length}</span></p>
       <ul className="space-y-1">
         {items.map((item) => {
           const ItemIcon = entityIcons[item.type];
           return (
-            <li key={`${item.type}:${item.id}`} className="group flex items-center gap-2 rounded-lg border bg-card/60 px-2.5 py-2 transition-colors hover:bg-accent/60">
+            <li key={`${item.type}:${item.id}`} className="group flex items-center gap-2 rounded-lg bg-card/60 shadow-sm px-2.5 py-2 transition-colors hover:bg-accent/60">
               <ItemIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Link href={item.href} className="min-w-0 flex-1">
                 <span className="block truncate text-sm">{item.title || t('common.untitled')}</span>
@@ -289,7 +289,7 @@ function RelationGroup({ icon: Icon, title, items, onRemove }: { icon: typeof Li
               </Link>
               {item.linkId && onRemove && (
                 <button type="button" onClick={() => onRemove(item.linkId as string)} aria-label={t('relations.remove')}
-                  className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100">
+                  className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100">
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}

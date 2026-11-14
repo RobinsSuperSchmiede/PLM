@@ -31,7 +31,7 @@ export function SplitLayout({ sidebar, children, sidebarClassName, className, wi
           <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')} />
         </button>
       </div>
-      <aside className={cn('min-h-0 overflow-y-auto border-b bg-[hsl(var(--sidebar))]/60 lg:block lg:border-b-0 lg:border-r', open ? 'block max-h-[55vh] lg:max-h-none duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden', sidebarClassName)}
+      <aside className={cn('min-h-0 overflow-y-auto border-b bg-card/60 lg:block lg:border-b-0 lg:border-r', open ? 'block max-h-[55vh] lg:max-h-none duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden', sidebarClassName)}
         onClick={(event) => {
           // On phones, picking an entry closes the panel again.
           if (window.innerWidth < 1024 && (event.target as HTMLElement).closest('button[aria-current], li > button')) setOpen(false);
@@ -48,7 +48,7 @@ export function SidebarSection({ title, children, action }: { title?: string; ch
     <div className="px-2 py-3">
       {(title || action) && (
         <div className="flex items-center justify-between px-2 pb-1.5">
-          {title && <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</p>}
+          {title && <p className="ds-label">{title}</p>}
           {action}
         </div>
       )}

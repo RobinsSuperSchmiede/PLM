@@ -1,7 +1,7 @@
 import uuid
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -73,6 +73,20 @@ def file_content(file_id: uuid.UUID, download: bool = False, db: Session = Depen
             "X-Content-Type-Options": "nosniff",
             "Cache-Control": "private, max-age=86400",
         },
+    )
+
+
+@router.get("/{file_id}/thumbnail")
+def file_thumbnail(file_id: uuid.UUID, size: int = Query(320, ge=16, le=4096), db: Session = Depends(get_db)) -> FileResponse:
+    """Small WebP preview of an image, so galleries do not download the originals."""
+    path = files.thumbnail_path(load(db, file_id), size)
+    if path is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No thumbnail available")
+    return FileResponse(
+        path,
+        media_type="image/webp",
+        # The bytes of an uploaded file never change, so its previews can be cached for a long time.
+        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=2592000, immutable"},
     )
 
 

@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 export type BarDatum = { key: string; label: string; value: number; tooltip?: string };
 
 /**
- * Single-series column chart (one hue, so no legend): thin bars with rounded tops anchored to the
- * baseline, a recessive baseline, sparse axis labels and a hover tooltip per bar.
+ * Single-series column chart: neutral bars, only the current period (the last bar) and the hovered
+ * bar carry the accent. Muted mono axis labels and a hover tooltip per bar.
  */
 export function BarChart({ data, height = 140, className, ariaLabel }: { data: BarDatum[]; height?: number; className?: string; ariaLabel: string }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -21,21 +21,21 @@ export function BarChart({ data, height = 140, className, ariaLabel }: { data: B
         {data.map((entry, index) => (
           <div key={entry.key} className="flex h-full flex-1 cursor-default items-end" onMouseEnter={() => setHover(index)}>
             <div
-              className={cn('w-full rounded-t-[4px] transition-[height,background-color] duration-500 ease-[var(--ease-out)]', hover === index ? 'bg-info' : 'bg-info/70')}
+              className={cn('w-full rounded-t-[3px] transition-colors duration-150 ease-ds', hover === index || (hover === null && index === data.length - 1) ? 'bg-brand' : 'bg-foreground/15')}
               style={{ height: entry.value ? `${Math.max(3, (entry.value / max) * 100)}%` : '1px', opacity: entry.value ? 1 : 0.35 }}
             />
           </div>
         ))}
       </div>
       <div className="mt-1 border-t" />
-      <div className="mt-1 flex gap-[2px] text-[10px] text-muted-foreground">
+      <div className="mt-2 flex gap-[2px] font-mono text-[10px] text-muted-foreground">
         {data.map((entry, index) => (
           <span key={entry.key} className="flex-1 overflow-visible whitespace-nowrap text-center">{index % labelEvery === 0 ? entry.label : ''}</span>
         ))}
       </div>
       {hover !== null && data[hover] && (
         <div
-          className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs shadow-md"
+          className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md ds-menu px-2 py-1 text-xs shadow-md"
           style={{ left: `${((hover + 0.5) / data.length) * 100}%` }}
         >
           <span className="font-medium tabular-nums">{data[hover].value}</span>
@@ -46,10 +46,12 @@ export function BarChart({ data, height = 140, className, ariaLabel }: { data: B
   );
 }
 
-/** GitHub-style activity calendar: one sequential hue, light to dark, weeks as columns. */
-export function Heatmap({ days, weeks = 53, tooltip, legend }: {
+/** Activity calendar: weeks as columns, one sequential ramp of the accent from faint to full. */
+export function Heatmap({ days, weeks = 53, cell = 11, tooltip, legend }: {
   days: Record<string, number>;
   weeks?: number;
+  /** Edge length of one day in px. */
+  cell?: number;
   tooltip: (date: string, count: number) => string;
   legend: { less: string; more: string };
 }) {
@@ -69,33 +71,34 @@ export function Heatmap({ days, weeks = 53, tooltip, legend }: {
   const quantile = (q: number) => values[Math.min(values.length - 1, Math.floor(q * values.length))] ?? 1;
   const thresholds = [quantile(0.25), quantile(0.5), quantile(0.8)];
   const level = (count: number) => (count === 0 ? 0 : count <= thresholds[0] ? 1 : count <= thresholds[1] ? 2 : count <= thresholds[2] ? 3 : 4);
-  const shades = ['bg-muted', 'bg-info/25', 'bg-info/45', 'bg-info/70', 'bg-info'];
+  const shades = ['bg-foreground/[0.06]', 'bg-brand/25', 'bg-brand/45', 'bg-brand/70', 'bg-brand'];
 
   return (
     <div className="relative">
       <div className="overflow-x-auto pb-1">
         <div className="grid w-max grid-flow-col grid-rows-7 gap-[3px]" role="img" aria-label={legend.more} onMouseLeave={() => setHover(null)}>
-          {cells.map((cell) => (
+          {cells.map((day) => (
             <div
-              key={cell.date}
-              className={cn('h-[11px] w-[11px] rounded-[3px] transition-colors', cell.future ? 'bg-transparent' : shades[level(cell.count)])}
+              key={day.date}
+              className={cn('rounded-[3px]', day.future ? 'bg-transparent' : shades[level(day.count)])}
+              style={{ width: cell, height: cell }}
               onMouseEnter={(event) => {
-                if (cell.future) return;
+                if (day.future) return;
                 const rect = event.currentTarget.getBoundingClientRect();
                 const parent = event.currentTarget.closest('.relative')!.getBoundingClientRect();
-                setHover({ date: cell.date, count: cell.count, x: rect.left - parent.left + 5, y: rect.top - parent.top });
+                setHover({ date: day.date, count: day.count, x: rect.left - parent.left + cell / 2, y: rect.top - parent.top });
               }}
             />
           ))}
         </div>
       </div>
-      <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+      <div className="mt-3 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
         {legend.less}
-        {shades.map((shade) => <span key={shade} className={cn('h-[10px] w-[10px] rounded-[3px]', shade)} />)}
+        {shades.map((shade) => <span key={shade} className={cn('h-[10px] w-[10px] rounded-[2px]', shade)} />)}
         {legend.more}
       </div>
       {hover && (
-        <div className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-xs shadow-md" style={{ left: hover.x, top: hover.y - 4 }}>
+        <div className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md ds-menu px-2 py-1 text-xs shadow-md" style={{ left: hover.x, top: hover.y - 4 }}>
           {tooltip(hover.date, hover.count)}
         </div>
       )}
@@ -103,16 +106,16 @@ export function Heatmap({ days, weeks = 53, tooltip, legend }: {
   );
 }
 
-/** Horizontal bars with the value as text; one hue, labels in text ink. */
+/** Ranked list with thin neutral bars; the leading entry carries the accent. */
 export function BarList({ items }: { items: { label: string; value: number }[] }) {
   const max = Math.max(1, ...items.map((item) => item.value));
   return (
-    <ul className="space-y-2.5">
-      {items.map((item) => (
+    <ul className="space-y-3">
+      {items.map((item, index) => (
         <li key={item.label}>
-          <div className="flex justify-between text-xs"><span>{item.label}</span><span className="tabular-nums text-muted-foreground">{item.value}</span></div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-info/80 transition-[width] duration-700 ease-[var(--ease-out)]" style={{ width: `${(item.value / max) * 100}%` }} />
+          <div className="flex justify-between text-xs"><span>{item.label}</span><span className="font-mono tabular-nums text-muted-foreground">{item.value.toLocaleString()}</span></div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+            <div className={cn('h-full rounded-full', index === 0 ? 'bg-brand' : 'bg-foreground/25')} style={{ width: `${(item.value / max) * 100}%` }} />
           </div>
         </li>
       ))}

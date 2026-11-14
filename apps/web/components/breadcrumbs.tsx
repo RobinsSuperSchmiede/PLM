@@ -101,17 +101,18 @@ export function Breadcrumbs() {
 
   return (
     <nav aria-label={t('ui.breadcrumbs')} className="min-w-0">
-      <ol className="flex min-w-0 items-center gap-1 text-sm">
+      <ol className="flex min-w-0 items-center gap-1.5">
         {crumbs.map((crumb, index) => {
           const last = index === crumbs.length - 1;
+          const pill = 'block max-w-full truncate text-[13px] transition-colors duration-500 ease-ds';
           return (
             <Fragment key={`${index}-${crumb.label}`}>
-              {index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" aria-hidden="true" />}
-              <li className={last ? 'min-w-0 truncate font-medium duration-300 animate-in fade-in slide-in-from-left-1' : index === 0 ? 'shrink-0' : 'hidden min-w-0 max-w-[14rem] truncate md:block'}>
+              {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" strokeWidth={1.6} aria-hidden="true" />}
+              <li className={last ? 'min-w-0 duration-300 animate-in fade-in slide-in-from-left-1' : index === 0 ? 'shrink-0' : 'hidden min-w-0 max-w-[12rem] lg:block'}>
                 {crumb.href && !last ? (
-                  <Link href={crumb.href} className="text-muted-foreground transition-colors hover:text-foreground">{crumb.label}</Link>
+                  <Link href={crumb.href} className={`${pill} text-muted-foreground hover:text-foreground focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring`}>{crumb.label}</Link>
                 ) : (
-                  <span aria-current={last ? 'page' : undefined}>{crumb.label}</span>
+                  <span aria-current={last ? 'page' : undefined} className={`${pill} font-medium`}>{crumb.label}</span>
                 )}
               </li>
             </Fragment>

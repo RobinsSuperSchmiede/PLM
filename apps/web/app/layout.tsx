@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 
 import { AccessGate } from '@/components/access-gate';
@@ -10,7 +10,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { appearanceBootScript } from '@/lib/appearance';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const mono = JetBrains_Mono({ subsets: ['latin'], weight: ['400'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Anamnesies',
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: [{ media: '(prefers-color-scheme: dark)', color: '#050505' }, { media: '(prefers-color-scheme: light)', color: '#ffffff' }],
+  themeColor: '#A3A3A8',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Applies the saved accent, radius and density before the first paint. */}
         <script dangerouslySetInnerHTML={{ __html: appearanceBootScript }} />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${mono.variable} font-sans`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <I18nProvider>
             <TooltipProvider delayDuration={300}>

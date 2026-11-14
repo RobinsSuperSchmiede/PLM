@@ -4,18 +4,18 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-1 focus:ring-ring',
+  'inline-flex h-[22px] items-center gap-1.5 whitespace-nowrap rounded-full border-0 px-2.5 text-[11px] font-medium leading-none transition-colors duration-500 ease-ds focus:outline-none focus:ring-[3px] focus:ring-ring',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground shadow',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground',
-        destructive: 'border-transparent bg-destructive/15 text-destructive',
-        success: 'border-transparent bg-success/15 text-success',
-        warning: 'border-transparent bg-warning/15 text-warning',
-        info: 'border-transparent bg-info/15 text-info',
-        brand: 'border-transparent bg-brand/15 text-brand',
-        outline: 'text-foreground',
+        default: 'bg-primary text-primary-foreground shadow-sm',
+        secondary: 'ds-glass text-[hsl(var(--fg-2)/var(--fg-2-a))]',
+        destructive: 'bg-field text-destructive shadow-sm',
+        success: 'bg-field text-success shadow-sm',
+        warning: 'bg-field text-warning shadow-sm',
+        info: 'bg-field text-info shadow-sm',
+        brand: 'bg-field text-brand shadow-sm',
+        outline: 'ds-glass text-[hsl(var(--fg-2)/var(--fg-2-a))]',
       },
     },
     defaultVariants: {

@@ -74,3 +74,48 @@ def save(db: Session, name: str, stream: BinaryIO, *, project_id: uuid.UUID | No
 
 def remove_content(stored: StoredFile) -> None:
     path_of(stored).unlink(missing_ok=True)
+    for thumbnail in (upload_dir() / THUMBNAIL_DIR).glob(f"{Path(stored.storage_key).stem}-*.webp"):
+        thumbnail.unlink(missing_ok=True)
+
+
+# --- Thumbnails ---------------------------------------------------------------------------------
+
+THUMBNAIL_DIR = ".thumbs"
+# Longest edge in pixels; requests are rounded up to one of these so only a few variants are stored.
+THUMBNAIL_SIZES = (160, 320, 640, 1280)
+
+
+def thumbnail_size(requested: int) -> int:
+    return next((size for size in THUMBNAIL_SIZES if size >= requested), THUMBNAIL_SIZES[-1])
+
+
+def thumbnail_path(stored: StoredFile, requested: int) -> Path | None:
+    """Path of a small WebP preview of an image, created on first use. None if no preview can be made."""
+    if stored.kind != "image":
+        return None
+    source = path_of(stored)
+    if not source.exists():
+        return None
+    directory = upload_dir() / THUMBNAIL_DIR
+    target = directory / f"{Path(stored.storage_key).stem}-{thumbnail_size(requested)}.webp"
+    if target.exists():
+        return target
+
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    size = thumbnail_size(requested)
+    try:
+        with Image.open(source) as image:
+            image.seek(0)  # first frame of animated GIF/WebP
+            image = ImageOps.exif_transpose(image)
+            if image.mode not in ("RGB", "RGBA"):
+                image = image.convert("RGBA" if "A" in image.getbands() or "transparency" in image.info else "RGB")
+            image.thumbnail((size, size), Image.Resampling.LANCZOS)
+            directory.mkdir(parents=True, exist_ok=True)
+            # Written to a temporary name first so a parallel request never serves a half-written file.
+            temporary = target.with_name(f"{target.stem}.{uuid.uuid4().hex}.tmp")
+            image.save(temporary, "WEBP", quality=80, method=4)
+            temporary.replace(target)
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        return None
+    return target

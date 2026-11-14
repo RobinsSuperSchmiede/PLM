@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 type Challenge = { challenge_id: string; expires_at: string };
 
 export async function GET() {
-  return NextResponse.json({ granted: hasAccess(cookies().get(accessCookieName)?.value) });
+  return NextResponse.json({ granted: hasAccess((await cookies()).get(accessCookieName)?.value) });
 }
 
 /**

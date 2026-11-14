@@ -1,9 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CalendarClock, CheckSquare2, Pencil, Plus } from 'lucide-react';
+import { CalendarClock, CheckSquare2, ChevronDown, Pencil, Plus } from 'lucide-react';
 
-import { ANY, FilterBar, useIncremental } from '@/components/filter-bar';
+import { ANY, FilterBar } from '@/components/filter-bar';
 import { useI18n } from '@/components/i18n-provider';
 import { EntityTags } from '@/components/knowledge';
 import { OpenFromQuery, useClearQueryId } from '@/components/open-from-query';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DeleteButton, EmptyState, PageHeader, PageSkeleton, SearchInput } from '@/components/workspace-ui';
+import { VirtualList } from '@/components/virtual-list';
 import { useWorkspace } from '@/components/workspace-provider';
 import { colorOf } from '@/lib/appearance';
 import { addDays, relativeDay, toDateKey, todayKey } from '@/lib/dates';
@@ -67,8 +68,6 @@ export default function TasksPage() {
       });
   }, [data.tasks, due, priority, project, query, sort, status, tag, tagAssignments, today]);
 
-  const { visible, marker, shown, total } = useIncremental(filtered, 80);
-
   if (loading) return <PageSkeleton />;
 
   const dayLabels = { today: t('common.today'), tomorrow: t('common.tomorrow'), yesterday: t('common.yesterday') };
@@ -92,7 +91,7 @@ export default function TasksPage() {
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {summary.map((item) => (
           <button key={item.key} type="button" onClick={item.onClick}
-            className="group flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3 text-left transition-colors hover:bg-accent/60">
+            className="group flex items-center gap-3 rounded-xl bg-card/60 shadow-sm px-4 py-3 text-left transition-colors hover:bg-accent/60">
             <span className="h-8 w-1 rounded-full" style={{ background: item.color }} />
             <span>
               <span className="block text-xl font-semibold tabular-nums">{item.value}</span>
@@ -130,18 +129,16 @@ export default function TasksPage() {
 
       {filtered.length ? (
         <>
-          <p className="mb-2 px-1 text-xs text-muted-foreground">{t('filters.showing', { shown, total })}</p>
-          <div className="divide-y divide-border/60 border-y">
-            {visible.map((task) => {
+          <p className="mb-2 px-1 text-xs text-muted-foreground">{t('filters.showing', { shown: filtered.length, total: data.tasks.length })}</p>
+          <VirtualList items={filtered} keyOf={(task) => task.id} estimateSize={54} gap={2} renderItem={(task) => {
               const done = task.status === 'done';
               const late = !done && task.due_date !== null && task.due_date < today;
               const taskProject = task.project_id ? projects.get(task.project_id) : undefined;
               return (
-                <div key={task.id} className="lazy-row group relative flex items-center gap-3 py-2.5 pl-4 pr-2 transition-colors hover:bg-accent/40">
-                  <span className="absolute inset-y-2 left-0 w-[3px] rounded-full" style={{ background: priorityColors[task.priority], opacity: done ? 0.3 : 1 }} aria-hidden="true" />
+                <div className="group relative flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors duration-150 hover:bg-accent">
                   <Checkbox checked={done} onCheckedChange={(checked) => void update('tasks', task.id, { status: checked ? 'done' : 'todo' })} aria-label={`${t('tasks.done')}: ${task.title}`} />
                   <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setEditing(task)}>
-                    <p className={cn('truncate text-sm font-medium transition-colors duration-300', done && 'text-muted-foreground line-through')}>{task.title}</p>
+                    <p className={cn('truncate text-[13px] font-medium transition-colors duration-200', done && 'text-muted-foreground line-through')}>{task.title}</p>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {taskProject && <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full" style={{ background: colorOf(taskProject.name) }} />{taskProject.name}</span>}
                       {task.due_date && (
@@ -152,25 +149,15 @@ export default function TasksPage() {
                       <EntityTags type="task" id={task.id} limit={3} plain className="[&>span]:h-5" />
                     </p>
                   </button>
-                  <span className="hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium md:inline-flex"
-                    style={{ color: priorityColors[task.priority], background: `color-mix(in srgb, ${priorityColors[task.priority]} 12%, transparent)` }}>
+                  <span className={cn('hidden w-14 text-right text-xs md:inline', task.priority === 'high' && !done ? 'font-medium text-destructive' : 'text-muted-foreground')}>
                     {t(priorityKeys[task.priority])}
                   </span>
-                  <Select value={task.status} onValueChange={(value) => void update('tasks', task.id, { status: value as TaskStatus })}>
-                    <SelectTrigger className="hidden h-8 w-[130px] gap-1.5 rounded-full text-xs sm:flex" aria-label={t('common.status')}>
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: statusColors[task.status] }} /><SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(statusKeys) as TaskStatus[]).map((value) => <SelectItem key={value} value={value}>{t(statusKeys[value])}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <StatusSelect status={task.status} onChange={(value) => void update('tasks', task.id, { status: value })} />
                   <Button variant="ghost" size="icon-sm" className="text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100" aria-label={`${t('common.edit')}: ${task.title}`} onClick={() => setEditing(task)}><Pencil /></Button>
                   <DeleteButton name={task.title} onConfirm={() => void remove('tasks', task.id)} />
                 </div>
               );
-            })}
-          </div>
-          {marker}
+            }} />
         </>
       ) : (
         <EmptyState icon={CheckSquare2} title={t('tasks.empty')} description={t('tasks.emptyDesc')} action={<Button variant="outline" onClick={() => setEditing('new')}><Plus />{t('tasks.new')}</Button>} />
@@ -179,5 +166,40 @@ export default function TasksPage() {
       <OpenFromQuery items={data.tasks} onOpen={setEditing} />
       <TaskDialog task={editing} onClose={() => { setEditing(null); clearQuery(); }} />
     </div>
+  );
+}
+
+/**
+ * Status picker of a row. Until it is used it is a plain button that looks the same; the Radix select
+ * (with its own state, listeners and collection) is mounted on the first click or key press, opens at once
+ * and then stays, so keyboard focus is never lost.
+ */
+function StatusSelect({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void }) {
+  const { t } = useI18n();
+  const [active, setActive] = useState(false);
+  const trigger = 'hidden h-8 w-[130px] gap-1.5 rounded-full text-xs sm:flex';
+  const dot = <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: statusColors[status] }} />;
+
+  if (!active) {
+    return (
+      <button type="button" aria-label={t('common.status')} aria-haspopup="listbox"
+        onPointerDown={(event) => { if (event.button === 0) { event.preventDefault(); setActive(true); } }}
+        onKeyDown={(event) => { if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); setActive(true); } }}
+        className={cn('ds-glass items-center justify-between px-3.5 text-left text-foreground transition-[background-color,box-shadow] duration-200 ease-ds hover:bg-glass-hover hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring', trigger)}>
+        <span className="flex min-w-0 items-center gap-1.5">{dot}<span className="truncate">{t(statusKeys[status])}</span></span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      </button>
+    );
+  }
+
+  return (
+    <Select value={status} defaultOpen onValueChange={(value) => onChange(value as TaskStatus)}>
+      <SelectTrigger className={trigger} aria-label={t('common.status')}>
+        {dot}<SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {(Object.keys(statusKeys) as TaskStatus[]).map((value) => <SelectItem key={value} value={value}>{t(statusKeys[value])}</SelectItem>)}
+      </SelectContent>
+    </Select>
   );
 }

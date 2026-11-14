@@ -49,7 +49,7 @@ export default function TagPage() {
         <div className="mb-5 flex flex-wrap gap-1.5" role="tablist">
           {[{ type: 'all' as const, count: items.length }, ...counts].map((entry) => (
             <button key={entry.type} type="button" role="tab" aria-selected={type === entry.type} onClick={() => setType(entry.type)}
-              className={cn('rounded-full border px-3 py-1 text-xs transition-all duration-200 active:scale-95',
+              className={cn('rounded-full border px-3 py-1 text-xs transition-[background-color,border-color,color,transform] duration-200 active:scale-95',
                 type === entry.type ? 'border-foreground/30 bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent')}>
               {entry.type === 'all' ? t('tags.allTypes') : t(entityLabelKeys[entry.type])} <span className="tabular-nums opacity-70">{entry.count}</span>
             </button>
@@ -64,7 +64,7 @@ export default function TagPage() {
           {visible.map((item) => {
             const Icon = entityIcons[item.type];
             return (
-              <Link key={`${item.type}:${item.id}`} href={item.href} className="card-hover flex flex-col rounded-xl border bg-card p-4">
+              <Link key={`${item.type}:${item.id}`} href={item.href} className="card-hover flex flex-col rounded-xl bg-card shadow-sm p-4">
                 <span className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="h-3.5 w-3.5" />{t(entityLabelKeys[item.type])}<span className="ml-auto">{formatDateTime(item.updatedAt, language)}</span></span>
                 <span className="mt-2 truncate font-medium">{item.title || t('common.untitled')}</span>
                 {item.preview && <span className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.preview}</span>}
