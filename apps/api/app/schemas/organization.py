@@ -133,9 +133,11 @@ class FileRead(EntityRead):
     kind: FileKind
     description: str | None
     project_id: uuid.UUID | None
+    folder_id: uuid.UUID | None = None
 
 
 class FileUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None

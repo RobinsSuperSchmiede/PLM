@@ -7,10 +7,10 @@ from typing import Any
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from app.models import EntityLink, EntityTag, Folder, Note, Project, StoredFile, Tag
+from app.models import EntityLink, EntityTag, Folder, Project, StoredFile, Tag
 from app.models.base import Base, utcnow
 from app.schemas.organization import ArchivedItem, TagRead, normalize_tag
-from app.services.registry import ENTITY_MODELS, PROJECT_SCOPED, preview_of, title_of, type_of
+from app.services.registry import ENTITY_MODELS, FOLDER_SCOPED, PROJECT_SCOPED, preview_of, title_of, type_of
 
 
 class UnknownEntityError(LookupError):
@@ -50,7 +50,8 @@ def clear_references(db: Session, entity: Base) -> None:
     if isinstance(entity, Folder):
         # Contents move up one level instead of being deleted with the folder.
         db.execute(update(Folder).where(Folder.parent_id == entity_id).values(parent_id=entity.parent_id))
-        db.execute(update(Note).where(Note.folder_id == entity_id).values(folder_id=entity.parent_id))
+        for model in FOLDER_SCOPED:
+            db.execute(update(model).where(model.folder_id == entity_id).values(folder_id=entity.parent_id))  # type: ignore[attr-defined]
 
 
 # --- Tags ---------------------------------------------------------------------------------------
@@ -131,8 +132,9 @@ def archive(db: Session, entity_type: str, entity_id: uuid.UUID) -> Any:
         for folder in _folder_tree(db, entity):
             if folder.archived_at is None:
                 folder.archived_at = now
-            for note in db.scalars(select(Note).where(Note.folder_id == folder.id, Note.archived_at.is_(None))):
-                note.archived_at = now
+            for model in FOLDER_SCOPED:
+                for entry in db.scalars(select(model).where(model.folder_id == folder.id, model.archived_at.is_(None))):  # type: ignore[attr-defined]
+                    entry.archived_at = now
     db.commit()
     db.refresh(entity)
     return entity
@@ -146,10 +148,11 @@ def restore(db: Session, entity_type: str, entity_id: uuid.UUID) -> Any:
         for folder in _folder_tree(db, entity):
             if folder.archived_at == archived_at:
                 folder.archived_at = None
-            for note in db.scalars(select(Note).where(Note.folder_id == folder.id, Note.archived_at == archived_at)):
-                note.archived_at = None
+            for model in FOLDER_SCOPED:
+                for entry in db.scalars(select(model).where(model.folder_id == folder.id, model.archived_at == archived_at)):  # type: ignore[attr-defined]
+                    entry.archived_at = None
     # Restoring into an archived (or missing) folder would hide the entry, so move it to the parent level.
-    parent_attr = "folder_id" if isinstance(entity, Note) else "parent_id" if isinstance(entity, Folder) else None
+    parent_attr = "parent_id" if isinstance(entity, Folder) else "folder_id" if isinstance(entity, FOLDER_SCOPED) else None
     if parent_attr and getattr(entity, parent_attr):
         parent = db.get(Folder, getattr(entity, parent_attr))
         if parent is None or parent.archived_at is not None:

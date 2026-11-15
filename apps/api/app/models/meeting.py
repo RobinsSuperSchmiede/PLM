@@ -3,10 +3,10 @@ import datetime as dt
 from sqlalchemy import Date, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import ArchivableMixin, Base, EntityMixin, ProjectScopedMixin
+from app.models.base import ArchivableMixin, Base, EntityMixin, FolderScopedMixin, ProjectScopedMixin
 
 
-class Meeting(EntityMixin, ArchivableMixin, ProjectScopedMixin, Base):
+class Meeting(EntityMixin, ArchivableMixin, ProjectScopedMixin, FolderScopedMixin, Base):
     __tablename__ = "meetings"
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)

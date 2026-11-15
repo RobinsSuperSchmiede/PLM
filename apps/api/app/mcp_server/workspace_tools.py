@@ -5,6 +5,7 @@ notes in folders, tasks and events in projects, tags, links/backlinks, archive a
 """
 
 import uuid
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -20,9 +21,9 @@ from app.schemas.note import NoteCreate, NoteRead, NoteUpdate
 from app.schemas.organization import FileRead, FileUpdate, FolderCreate, FolderRead, FolderUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
-from app.services import crud
+from app.services import crud, warehouse
 from app.services import organization as org
-from app.services.registry import ENTITY_MODELS, PROJECT_SCOPED, preview_of, title_of
+from app.services.registry import ENTITY_MODELS, FOLDER_SCOPED, PROJECT_SCOPED, preview_of, title_of
 
 TYPES = "note|task|event|meeting|project|knowledge|idea|folder|file"
 
@@ -145,7 +146,7 @@ def delete_item(entity_type: str, entity_id: str) -> str:
     return f"Deleted {entity_type} '{title}'"
 
 
-@mcp.tool(description=f"List entries of one type, optionally filtered by project, tag, folder (notes) or a text query. entity_type: {TYPES}. "
+@mcp.tool(description=f"List entries of one type, optionally filtered by project, tag, folder or a text query. entity_type: {TYPES}. "
           "Archived entries are excluded unless include_archived is true.")
 def list_items(entity_type: str, project_id: str | None = None, tag: str | None = None, folder_id: str | None = None,
                query: str | None = None, include_archived: bool = False, limit: int = 100) -> list[dict[str, Any]]:
@@ -159,9 +160,9 @@ def list_items(entity_type: str, project_id: str | None = None, tag: str | None 
             raise ValueError(f"{entity_type} entries cannot belong to a project")
         statement = statement.where(model.project_id == uuid.UUID(project_id))  # type: ignore[attr-defined]
     if folder_id:
-        if model is not Note:
-            raise ValueError("folder_id only applies to notes")
-        statement = statement.where(Note.folder_id == uuid.UUID(folder_id))
+        if model not in FOLDER_SCOPED:
+            raise ValueError(f"{entity_type} entries cannot be filed in a folder")
+        statement = statement.where(model.folder_id == uuid.UUID(folder_id))  # type: ignore[attr-defined]
     if query:
         statement = statement.where(contains(query, *(getattr(model, field) for field in SEARCH_FIELDS[entity_type])))
     if tag:
@@ -278,16 +279,17 @@ def get_project_overview(project_id: str) -> dict[str, Any]:
 # --- Folders, archive, files --------------------------------------------------------------------
 
 
-@mcp.tool(description="The note folder tree with note counts. Use the ids as folder_id for notes or parent_id for subfolders.")
+@mcp.tool(description="The explorer folder tree with the number of entries in each folder. Use the ids as folder_id for any entry or parent_id for subfolders.")
 def list_folders() -> list[dict[str, Any]]:
     with session() as db:
         folders = db.scalars(select(Folder).where(Folder.archived_at.is_(None)).order_by(Folder.position, Folder.name)).all()
         counts: dict[uuid.UUID, int] = {}
-        for note in db.scalars(select(Note).where(Note.archived_at.is_(None), Note.folder_id.is_not(None))):
-            counts[note.folder_id] = counts.get(note.folder_id, 0) + 1  # type: ignore[index]
+        for model in FOLDER_SCOPED:
+            for folder_id in db.scalars(select(model.folder_id).where(model.archived_at.is_(None), model.folder_id.is_not(None))):  # type: ignore[attr-defined]
+                counts[folder_id] = counts.get(folder_id, 0) + 1
 
         def tree(parent: uuid.UUID | None) -> list[dict[str, Any]]:
-            return [{"id": str(folder.id), "name": folder.name, "notes": counts.get(folder.id, 0), "children": tree(folder.id)}
+            return [{"id": str(folder.id), "name": folder.name, "entries": counts.get(folder.id, 0), "children": tree(folder.id)}
                     for folder in folders if folder.parent_id == parent]
 
         return tree(None)
@@ -301,6 +303,49 @@ def move_note(note_id: str, folder_id: str | None) -> dict[str, Any]:
         note.folder_id = folder.id if folder else None
         db.commit()
         return {"note": _ref("note", note), "folder": _ref("folder", folder) if folder else None}
+
+
+@mcp.tool(description="Move any entry (note, task, event, meeting, project, knowledge, idea, file) into a folder; folder_id null moves it to the top level.")
+def move_item(entity_type: str, entity_id: str, folder_id: str | None) -> dict[str, Any]:
+    with session() as db:
+        entity = _load(db, entity_type, entity_id)
+        if not isinstance(entity, FOLDER_SCOPED):
+            raise ValueError(f"{entity_type} entries cannot be filed in a folder")
+        folder = _load(db, "folder", folder_id) if folder_id else None
+        entity.folder_id = folder.id if folder else None
+        db.commit()
+        return {"item": _ref(entity_type, entity), "folder": _ref("folder", folder) if folder else None}
+
+
+@mcp.tool(description=f"History of the workspace, newest first: what was created, changed, archived, restored or deleted, by which channel "
+          f"(app, mcp, telegram). Filter by entity_type ({TYPES}), entity_id, action (create|update|archive|restore|delete), "
+          "start_date/end_date (YYYY-MM-DD) or a text query, which also searches the content of deleted entries. "
+          "With entity_id set, every change comes with the changed fields (old and new value).")
+def get_history(entity_type: str | None = None, entity_id: str | None = None, action: str | None = None, start_date: str | None = None,
+                end_date: str | None = None, query: str = "", limit: int = 50) -> dict[str, Any]:
+    with session() as db:
+        result = warehouse.events(
+            db, limit=max(1, min(limit, 200)), full=bool(entity_id), entity_type=entity_type, action=action, source=None, project_id=None,
+            entity_id=entity_id, start=date.fromisoformat(start_date) if start_date else None, end=date.fromisoformat(end_date) if end_date else None, query=query,
+        )
+    for item in result["items"]:
+        item.pop("snapshot", None)
+    return result
+
+
+@mcp.tool(description="Entries that were deleted, with the title they had. Restore one with restore_deleted_item.")
+def list_deleted(query: str = "", entity_type: str | None = None) -> list[dict[str, Any]]:
+    with session() as db:
+        return warehouse.deleted(db, query, entity_type)
+
+
+@mcp.tool(description=f"Bring a deleted entry back from the history (files cannot be restored, their content is gone). entity_type: {TYPES}")
+def restore_deleted_item(entity_type: str, entity_id: str) -> dict[str, Any]:
+    with session() as db:
+        try:
+            return _ref(entity_type, warehouse.restore(db, entity_type, entity_id))
+        except warehouse.WarehouseError as exc:
+            raise ValueError(str(exc)) from exc
 
 
 @mcp.tool(description=f"Restore an archived entry. entity_type: {TYPES}")

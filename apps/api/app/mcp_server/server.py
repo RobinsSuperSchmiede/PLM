@@ -39,7 +39,7 @@ mcp = MCPServer(
         "lists, ideas, knowledge articles and reminders, plus sending Telegram messages and emails to the user. "
         "Everything is connected: use create_item/update_item/get_item/list_items/search_workspace for any entry type, "
         "link_items/unlink_items/get_relations for links and backlinks, set_tags/find_by_tag for tags, assign_to_project and "
-        "get_project_overview for projects, list_folders/move_note for the note folder tree, and archive_item/restore_item. "
+        "get_project_overview for projects, list_folders/move_item for the explorer folder tree (every entry type can be filed in a folder), and archive_item/restore_item. The workspace keeps its full history: get_history shows what changed when (also for deleted entries), list_deleted and restore_deleted_item bring deleted entries back. "
         "Dates use ISO format (YYYY-MM-DD), times use HH:MM in the user's local timezone."
     ),
 )

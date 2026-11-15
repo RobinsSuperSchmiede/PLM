@@ -20,11 +20,13 @@ class ListItemRead(ListItemCreate, EntityRead):
 class ListCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     category: str = Field("General", max_length=64)
+    pinned: bool = False
 
 
 class ListUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=255)
     category: str | None = Field(None, max_length=64)
+    pinned: bool | None = None
 
 
 class ListRead(ListCreate, EntityRead):

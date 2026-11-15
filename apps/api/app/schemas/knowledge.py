@@ -10,6 +10,7 @@ class KnowledgeCreate(BaseModel):
     category: str | None = Field(None, max_length=64)
     source_url: str | None = Field(None, max_length=1024)
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class KnowledgeUpdate(BaseModel):
@@ -18,6 +19,7 @@ class KnowledgeUpdate(BaseModel):
     category: str | None = Field(None, max_length=64)
     source_url: str | None = Field(None, max_length=1024)
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class KnowledgeRead(KnowledgeCreate, EntityRead):

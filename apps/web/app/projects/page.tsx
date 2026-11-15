@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { ArrowRight, CalendarDays, FileText, FolderKanban, Pencil, Plus } from 'lucide-react';
+import { ArrowRight, CalendarDays, FileText, FolderKanban, Pencil, Pin, Plus } from 'lucide-react';
 
 import { ANY, FilterBar } from '@/components/filter-bar';
 import { useI18n } from '@/components/i18n-provider';
@@ -49,7 +49,7 @@ export default function ProjectsPage() {
       .filter((project) => status === ANY || project.status === status)
       .filter((project) => !tagged || tagged.has(project.id))
       .filter((project) => !term || `${project.name} ${project.description ?? ''}`.toLowerCase().includes(term))
-      .sort((a, b) => (sort === 'title' ? a.name.localeCompare(b.name) : sort === 'progress' ? (progress.get(b.id) ?? 0) - (progress.get(a.id) ?? 0) : b.updated_at.localeCompare(a.updated_at)));
+      .sort((a, b) => Number(b.pinned) - Number(a.pinned) || (sort === 'title' ? a.name.localeCompare(b.name) : sort === 'progress' ? (progress.get(b.id) ?? 0) - (progress.get(a.id) ?? 0) : b.updated_at.localeCompare(a.updated_at)));
   }, [data.projects, progress, query, sort, status, tag, tagAssignments]);
 
   if (loading) return <PageSkeleton />;
@@ -90,6 +90,11 @@ export default function ProjectsPage() {
                     <Badge variant={projectStatusVariant[project.status]}>{t(`projects.${project.status}`)}</Badge>
                   </Link>
                   <div className="flex shrink-0">
+                    <Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-pressed={project.pinned}
+                      aria-label={`${project.pinned ? t('focus.unpin') : t('focus.pin')}: ${project.name}`} title={project.pinned ? t('focus.unpin') : t('focus.pin')}
+                      onClick={() => void update('projects', project.id, { pinned: !project.pinned })}>
+                      <Pin className={cn(project.pinned && 'fill-current text-foreground')} />
+                    </Button>
                     <Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-label={`${t('common.edit')}: ${project.name}`} onClick={() => setEditing(project)}><Pencil /></Button>
                     <ArchiveButton type="project" id={project.id} />
                     <DeleteButton name={project.name} onConfirm={() => void remove('projects', project.id)} />

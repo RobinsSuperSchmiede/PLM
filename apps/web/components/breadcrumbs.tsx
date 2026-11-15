@@ -22,6 +22,7 @@ const detailPages: Record<string, { type: EntityType; section: TranslationKey; p
 };
 
 const sections: Record<string, TranslationKey> = {
+  '/today': 'nav.today', '/focus': 'nav.focus',
   '/projects': 'nav.projects', '/tasks': 'nav.tasks', '/calendar': 'nav.calendar', '/reminders': 'nav.reminders',
   '/meetings': 'nav.meetings', '/lists': 'nav.lists', '/ideas': 'nav.ideas',
   '/graph': 'nav.graph', '/tags': 'nav.tags', '/archive': 'nav.archive',

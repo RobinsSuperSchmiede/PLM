@@ -19,6 +19,7 @@ class MeetingCreate(BaseModel):
     notes: str | None = None
     status: MeetingStatus = "planned"
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class MeetingUpdate(BaseModel):
@@ -30,6 +31,7 @@ class MeetingUpdate(BaseModel):
     notes: str | None = None
     status: MeetingStatus | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class MeetingRead(MeetingCreate, EntityRead):

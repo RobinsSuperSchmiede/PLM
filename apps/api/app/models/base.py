@@ -28,6 +28,12 @@ class ArchivableMixin:
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
 
+class FolderScopedMixin:
+    """Entries that can be filed in an explorer folder (notes carry the same column themselves)."""
+
+    folder_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("folders.id", ondelete="SET NULL"), nullable=True, index=True)
+
+
 class ProjectScopedMixin:
     """Entities that can belong to a project (the project acts as their workspace)."""
 

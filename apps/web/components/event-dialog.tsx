@@ -12,7 +12,7 @@ import { Field } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { CalendarEvent } from '@/lib/types';
 
-export function EventDialog({ event, defaultDate, onClose, defaultProjectId }: { event: CalendarEvent | 'new' | null; defaultDate: string; onClose: () => void; defaultProjectId?: string }) {
+export function EventDialog({ event, defaultDate, onClose, defaultProjectId, defaultFolderId }: { event: CalendarEvent | 'new' | null; defaultDate: string; onClose: () => void; defaultProjectId?: string; defaultFolderId?: string | null }) {
   const { t } = useI18n();
   const { create, update, setTags } = useWorkspace();
   const source = event && event !== 'new' ? event : null;
@@ -47,7 +47,7 @@ export function EventDialog({ event, defaultDate, onClose, defaultProjectId }: {
       location: form.location.trim() || null,
       description: form.description.trim() || null,
     };
-    const result = source ? await update('events', source.id, { ...payload, project_id: form.project_id }) : await create('events', { ...payload, project_id: form.project_id });
+    const result = source ? await update('events', source.id, { ...payload, project_id: form.project_id }) : await create('events', { ...payload, project_id: form.project_id, folder_id: defaultFolderId ?? null });
     if (result && (form.tagList.length || source)) await setTags('event', result.id, form.tagList);
     setSaving(false);
     if (result) onClose();

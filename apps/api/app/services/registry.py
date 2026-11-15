@@ -22,6 +22,9 @@ TYPE_OF_MODEL: dict[type[Base], str] = {model: name for name, model in ENTITY_MO
 # Models with a project_id column; a project acts as their workspace.
 PROJECT_SCOPED: tuple[type[Base], ...] = (Note, Task, Event, Meeting, KnowledgeArticle, Idea, StoredFile)
 
+# Models with a folder_id column: everything that can be filed in an explorer folder.
+FOLDER_SCOPED: tuple[type[Base], ...] = (Note, Task, Event, Meeting, Project, KnowledgeArticle, Idea, StoredFile)
+
 _PREVIEW_FIELDS = {"note": "content", "task": "description", "event": "description", "meeting": "agenda", "project": "description", "knowledge": "content", "idea": "description", "file": "description"}
 
 

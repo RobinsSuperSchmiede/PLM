@@ -144,7 +144,8 @@ def list_activity(
     limit: int = Query(50, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[ActivityLog]:
-    statement = select(ActivityLog).order_by(ActivityLog.at.desc(), ActivityLog.id.desc()).limit(limit)
+    # Baseline snapshots of the warehouse are bookkeeping, not something that happened.
+    statement = select(ActivityLog).where(ActivityLog.action != "snapshot").order_by(ActivityLog.at.desc(), ActivityLog.id.desc()).limit(limit)
     if project_id:
         statement = statement.where(ActivityLog.project_id == project_id)
     if entity_id:

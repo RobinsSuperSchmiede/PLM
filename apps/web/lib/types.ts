@@ -7,13 +7,15 @@ export type Entity = {
 
 /** Entries that can belong to a project; the project acts as their workspace. */
 type ProjectScoped = { project_id: string | null };
+/** Entries that can be filed in an explorer folder. */
+type FolderScoped = { folder_id: string | null };
 
 export type ProjectStatus = 'active' | 'on_hold' | 'completed';
-export type Project = Entity & { name: string; description: string | null; status: ProjectStatus };
+export type Project = Entity & FolderScoped & { name: string; description: string | null; status: ProjectStatus; pinned: boolean };
 
 export type TaskStatus = 'todo' | 'in-progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
-export type Task = Entity & {
+export type Task = Entity & FolderScoped & {
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -22,7 +24,7 @@ export type Task = Entity & {
   project_id: string | null;
 };
 
-export type CalendarEvent = Entity & ProjectScoped & {
+export type CalendarEvent = Entity & ProjectScoped & FolderScoped & {
   title: string;
   date: string;
   time: string | null;
@@ -31,7 +33,7 @@ export type CalendarEvent = Entity & ProjectScoped & {
 };
 
 export type MeetingStatus = 'planned' | 'done' | 'cancelled';
-export type Meeting = Entity & ProjectScoped & {
+export type Meeting = Entity & ProjectScoped & FolderScoped & {
   title: string;
   date: string;
   time: string | null;
@@ -51,17 +53,17 @@ export type Note = Entity & ProjectScoped & {
 };
 
 export type FileKind = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'presentation';
-export type StoredFile = Entity & { name: string; content_type: string; size: number; kind: FileKind; description: string | null; project_id: string | null };
+export type StoredFile = Entity & FolderScoped & { name: string; content_type: string; size: number; kind: FileKind; description: string | null; project_id: string | null };
 
 export type Folder = Entity & { name: string; parent_id: string | null; position: number; pinned: boolean; favorite: boolean };
 
 export type ListItem = Entity & { text: string; done: boolean; position: number };
-export type WorkspaceList = Entity & { title: string; category: string; items: ListItem[] };
+export type WorkspaceList = Entity & { title: string; category: string; pinned: boolean; items: ListItem[] };
 
 export type IdeaStatus = 'new' | 'exploring' | 'planned' | 'archived';
-export type Idea = Entity & ProjectScoped & { title: string; description: string | null; status: IdeaStatus; tags: string | null };
+export type Idea = Entity & ProjectScoped & FolderScoped & { title: string; description: string | null; status: IdeaStatus; tags: string | null };
 
-export type KnowledgeArticle = Entity & ProjectScoped & {
+export type KnowledgeArticle = Entity & ProjectScoped & FolderScoped & {
   title: string;
   content: string | null;
   category: string | null;
@@ -165,6 +167,46 @@ export type ActivityEntry = {
   title: string | null;
   project_id: string | null;
   source: string;
+};
+
+/** One row of the data warehouse: something that happened to an entry. */
+export type WarehouseAction = ActivityAction | 'snapshot';
+export type WarehouseEvent = {
+  id: number;
+  at: string;
+  action: WarehouseAction;
+  entity_type: EntityType;
+  entity_id: string;
+  title: string | null;
+  project_id: string | null;
+  source: string;
+  has_snapshot: boolean;
+  /** Names of the changed fields (lists) … */
+  changed?: string[];
+  /** … or the changes themselves with old and new value, and the entry as it was afterwards (history of one entry). */
+  changes?: Record<string, [unknown, unknown]>;
+  snapshot?: Record<string, unknown> | null;
+  restorable?: boolean;
+};
+export type WarehouseEvents = { total: number; items: WarehouseEvent[] };
+export type WarehouseHistory = {
+  type: EntityType;
+  id: string;
+  title: string | null;
+  state: 'active' | 'archived' | 'deleted';
+  restorable: boolean;
+  snapshot: Record<string, unknown> | null;
+  timeline: WarehouseEvent[];
+};
+export type WarehouseSummary = {
+  generated_at: string;
+  first_at: string | null;
+  events: number;
+  versions: number;
+  by_type: Record<EntityType, { active: number; archived: number; deleted: number; events: number }>;
+  by_action: Partial<Record<ActivityAction, number>>;
+  by_source: Record<string, number>;
+  months: Record<string, Partial<Record<ActivityAction, number>>>;
 };
 
 export type TelegramLogEntry = {

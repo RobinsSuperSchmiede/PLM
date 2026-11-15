@@ -37,12 +37,14 @@ def init_db() -> None:
     # Import models so they are registered on the metadata before creating tables.
     from app import models  # noqa: F401
     from app.models.base import Base
-    from app.services import activity
+    from app.services import activity, warehouse
 
     Base.metadata.create_all(bind=engine)
     _add_missing_columns(Base.metadata)
     _add_missing_indexes(Base.metadata)
     activity.install()
+    with SessionLocal() as db:
+        warehouse.backfill(db)
 
 
 def _add_missing_columns(metadata: MetaData) -> None:

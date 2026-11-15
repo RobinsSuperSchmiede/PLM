@@ -16,7 +16,7 @@ import type { Project, ProjectStatus } from '@/lib/types';
 export const projectStatusVariant = { active: 'success', on_hold: 'warning', completed: 'secondary' } as const;
 const statuses: ProjectStatus[] = ['active', 'on_hold', 'completed'];
 
-export function ProjectDialog({ project, onClose, onCreated }: { project: Project | 'new' | null; onClose: () => void; onCreated?: (project: Project) => void }) {
+export function ProjectDialog({ project, onClose, onCreated, defaultFolderId }: { project: Project | 'new' | null; onClose: () => void; onCreated?: (project: Project) => void; defaultFolderId?: string | null }) {
   const { t } = useI18n();
   const { create, update, setTags } = useWorkspace();
   const source = project && project !== 'new' ? project : null;
@@ -35,7 +35,7 @@ export function ProjectDialog({ project, onClose, onCreated }: { project: Projec
     if (!form.name.trim()) return;
     setSaving(true);
     const payload = { name: form.name.trim(), description: form.description.trim() || null, status: form.status };
-    const result = source ? await update('projects', source.id, payload) : await create('projects', payload);
+    const result = source ? await update('projects', source.id, payload) : await create('projects', { ...payload, folder_id: defaultFolderId ?? null });
     if (result && (form.tags.length || source)) await setTags('project', result.id, form.tags);
     setSaving(false);
     if (result) {

@@ -4,11 +4,11 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, Uuid, false
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import ArchivableMixin, Base, EntityMixin, ProjectScopedMixin, utcnow
+from app.models.base import ArchivableMixin, Base, EntityMixin, FolderScopedMixin, ProjectScopedMixin, utcnow
 
 
 class Folder(EntityMixin, ArchivableMixin, Base):
-    """Note folder; folders nest via parent_id like a file explorer."""
+    """Explorer folder for any kind of entry; folders nest via parent_id like a file explorer."""
 
     __tablename__ = "folders"
 
@@ -53,7 +53,11 @@ class EntityLink(Base):
 
 
 class ActivityLog(Base):
-    """Every create/update/archive/restore/delete of a workspace entity, for analytics and history."""
+    """Every create/update/archive/restore/delete of a workspace entity: the fact table of the data warehouse.
+
+    `changes` holds the changed fields as JSON ({field: [old, new]}), `snapshot` the complete entry after
+    the change (for a delete: as it was before), so past versions and deleted entries stay available.
+    """
 
     __tablename__ = "activity_log"
 
@@ -65,6 +69,8 @@ class ActivityLog(Base):
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     project_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     source: Mapped[str] = mapped_column(String(16), default="app")
+    changes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ApiUsage(Base):
@@ -91,7 +97,7 @@ class TelegramMessageLog(Base):
     project_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
 
-class StoredFile(EntityMixin, ArchivableMixin, ProjectScopedMixin, Base):
+class StoredFile(EntityMixin, ArchivableMixin, ProjectScopedMixin, FolderScopedMixin, Base):
     """Uploaded file (image, PDF, Office document). The bytes live in the upload directory under storage_key."""
 
     __tablename__ = "files"

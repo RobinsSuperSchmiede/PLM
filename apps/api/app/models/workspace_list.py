@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Uuid
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Uuid, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, EntityMixin
@@ -11,6 +11,7 @@ class WorkspaceList(EntityMixin, Base):
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(64), default="General")
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     items: Mapped[list["ListItem"]] = relationship(
         back_populates="parent",
         cascade="all, delete-orphan",

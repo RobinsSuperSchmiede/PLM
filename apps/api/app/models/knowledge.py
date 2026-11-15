@@ -1,10 +1,10 @@
 from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import ArchivableMixin, Base, EntityMixin, ProjectScopedMixin
+from app.models.base import ArchivableMixin, Base, EntityMixin, FolderScopedMixin, ProjectScopedMixin
 
 
-class KnowledgeArticle(EntityMixin, ArchivableMixin, ProjectScopedMixin, Base):
+class KnowledgeArticle(EntityMixin, ArchivableMixin, ProjectScopedMixin, FolderScopedMixin, Base):
     __tablename__ = "knowledge_articles"
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)

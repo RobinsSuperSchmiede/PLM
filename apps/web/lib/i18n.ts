@@ -39,6 +39,8 @@ const deBase = {
   },
   nav: {
     dashboard: 'Übersicht',
+    today: 'Heute',
+    focus: 'Angeheftet',
     projects: 'Projekte',
     tasks: 'Aufgaben',
     calendar: 'Kalender',
@@ -57,6 +59,7 @@ const deBase = {
     images: 'Bilder',
     docs: 'Docs',
     archive: 'Archiv',
+    warehouse: 'Warehouse',
     telegram: 'Telegram',
     assistant: 'MCP & KI',
     developer: 'Entwickler',
@@ -464,6 +467,8 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
   },
   nav: {
     dashboard: 'Dashboard',
+    today: 'Today',
+    focus: 'Pinned',
     projects: 'Projects',
     tasks: 'Tasks',
     calendar: 'Calendar',
@@ -482,6 +487,7 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
     images: 'Images',
     docs: 'Docs',
     archive: 'Archive',
+    warehouse: 'Warehouse',
     telegram: 'Telegram',
     assistant: 'MCP & AI',
     developer: 'Developer',

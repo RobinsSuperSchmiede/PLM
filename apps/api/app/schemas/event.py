@@ -15,6 +15,7 @@ class EventCreate(BaseModel):
     location: str | None = Field(None, max_length=255)
     description: str | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class EventUpdate(BaseModel):
@@ -24,6 +25,7 @@ class EventUpdate(BaseModel):
     location: str | None = Field(None, max_length=255)
     description: str | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class EventRead(EventCreate, EntityRead):

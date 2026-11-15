@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useMemo, useState } from 'react';
-import { ListChecks, Plus, X } from 'lucide-react';
+import { ListChecks, Pin, Plus, X } from 'lucide-react';
 
 import { useI18n } from '@/components/i18n-provider';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ export default function ListsPage() {
 
 function ListsView() {
   const { t } = useI18n();
-  const { data, loading, remove, listItems } = useWorkspace();
+  const { data, loading, remove, update, listItems } = useWorkspace();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
@@ -30,7 +30,7 @@ function ListsView() {
 
   const lists = useMemo(() => data.lists.filter((list) =>
     `${list.title} ${list.category} ${list.items.map((item) => item.text).join(' ')}`.toLowerCase().includes(query.toLowerCase()),
-  ), [data.lists, query]);
+  ).sort((a, b) => Number(b.pinned) - Number(a.pinned)), [data.lists, query]);
   const selected = data.lists.find((list) => list.id === searchParams.get('id')) ?? lists[0] ?? null;
   const select = (id: string | null) => router.replace(id ? `/lists?id=${id}` : '/lists', { scroll: false });
 
@@ -62,7 +62,7 @@ function ListsView() {
                 return (
                   <button key={list.id} type="button" onClick={() => select(list.id)} aria-current={selected?.id === list.id}
                     className={cn('w-full rounded-2xl px-3 py-2 text-left transition-[background-color,box-shadow,color,transform] duration-300 ease-ds hover:bg-accent active:scale-[0.99]', selected?.id === list.id && 'ds-glass')}>
-                    <span className="flex items-center gap-2"><ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate text-sm font-medium">{list.title}</span></span>
+                    <span className="flex items-center gap-2"><ListChecks className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /><span className="truncate text-sm font-medium">{list.title}</span>{list.pinned && <Pin className="h-3 w-3 shrink-0 fill-current opacity-60" />}</span>
                     <span className="mt-0.5 flex items-center justify-between pl-[22px] text-xs text-muted-foreground"><span>{list.category}</span><span className="tabular-nums">{done}/{list.items.length}</span></span>
                   </button>
                 );
@@ -80,7 +80,14 @@ function ListsView() {
                     {t('lists.items', { done: selected.items.filter((item) => item.done).length, total: selected.items.length })}
                   </div>
                 </div>
-                <DeleteButton name={selected.title} onConfirm={() => { void remove('lists', selected.id); select(null); }} />
+                <div className="flex shrink-0">
+                  <Button variant="ghost" size="icon-sm" className="text-muted-foreground" aria-pressed={selected.pinned}
+                    aria-label={selected.pinned ? t('focus.unpin') : t('focus.pin')} title={selected.pinned ? t('focus.unpin') : t('focus.pin')}
+                    onClick={() => void update('lists', selected.id, { pinned: !selected.pinned })}>
+                    <Pin className={cn(selected.pinned && 'fill-current text-foreground')} />
+                  </Button>
+                  <DeleteButton name={selected.title} onConfirm={() => { void remove('lists', selected.id); select(null); }} />
+                </div>
               </header>
               <div className="flex-1 space-y-0.5 overflow-y-auto p-3">
                 {selected.items.map((item) => (

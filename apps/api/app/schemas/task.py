@@ -17,6 +17,7 @@ class TaskCreate(BaseModel):
     priority: TaskPriority = "medium"
     due_date: date | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -26,6 +27,7 @@ class TaskUpdate(BaseModel):
     priority: TaskPriority | None = None
     due_date: date | None = None
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class TaskRead(TaskCreate, EntityRead):

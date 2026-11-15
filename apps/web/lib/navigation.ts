@@ -1,6 +1,6 @@
 import {
   Archive, BellRing, Bot, CalendarDays, CheckSquare2, Code2, Database, FolderKanban, FolderTree, Hash, Home, LifeBuoy, Lightbulb, ListTodo,
-  type LucideIcon, Network, Send, Settings, Users,
+  type LucideIcon, Network, Pin, Send, Settings, Sun, Users, Warehouse,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -27,19 +27,23 @@ export const navGroupOrder: NavGroupId[] = ['main', 'plan', 'knowledge', 'system
 /** Every page of the app. The explorer covers notes, documents, files and images in one place. */
 export const navItems: NavItem[] = [
   { id: 'dashboard', key: 'nav.dashboard', href: '/', icon: Home, group: 'main' },
-  { id: 'projects', key: 'nav.projects', href: '/projects', icon: FolderKanban, group: 'plan' },
-  { id: 'tasks', key: 'nav.tasks', href: '/tasks', icon: CheckSquare2, group: 'plan' },
-  { id: 'lists', key: 'nav.lists', href: '/lists', icon: ListTodo, group: 'plan', parent: 'tasks' },
-  { id: 'calendar', key: 'nav.calendar', href: '/calendar', icon: CalendarDays, group: 'plan' },
-  { id: 'reminders', key: 'nav.reminders', href: '/reminders', icon: BellRing, group: 'plan', parent: 'calendar' },
-  { id: 'meetings', key: 'nav.meetings', href: '/meetings', icon: Users, group: 'plan', parent: 'calendar' },
-  { id: 'explorer', key: 'nav.explorer', href: '/explorer', icon: FolderTree, group: 'knowledge' },
-  { id: 'graph', key: 'nav.graph', href: '/graph', icon: Network, group: 'knowledge', parent: 'explorer' },
-  { id: 'tags', key: 'nav.tags', href: '/tags', icon: Hash, group: 'knowledge', parent: 'explorer' },
-  { id: 'ideas', key: 'nav.ideas', href: '/ideas', icon: Lightbulb, group: 'knowledge' },
+  { id: 'today', key: 'nav.today', href: '/today', icon: Sun, group: 'main' },
+  { id: 'focus', key: 'nav.focus', href: '/focus', icon: Pin, group: 'main' },
+  // The explorer holds every kind of entry; the pages below it are other ways to look at the same things.
+  { id: 'explorer', key: 'nav.explorer', href: '/explorer', icon: FolderTree, group: 'main' },
+  { id: 'projects', key: 'nav.projects', href: '/projects', icon: FolderKanban, group: 'main', parent: 'explorer' },
+  { id: 'tasks', key: 'nav.tasks', href: '/tasks', icon: CheckSquare2, group: 'main', parent: 'explorer' },
+  { id: 'lists', key: 'nav.lists', href: '/lists', icon: ListTodo, group: 'main', parent: 'explorer' },
+  { id: 'meetings', key: 'nav.meetings', href: '/meetings', icon: Users, group: 'main', parent: 'explorer' },
+  { id: 'ideas', key: 'nav.ideas', href: '/ideas', icon: Lightbulb, group: 'main', parent: 'explorer' },
+  { id: 'graph', key: 'nav.graph', href: '/graph', icon: Network, group: 'main', parent: 'explorer' },
+  { id: 'tags', key: 'nav.tags', href: '/tags', icon: Hash, group: 'main', parent: 'explorer' },
+  { id: 'calendar', key: 'nav.calendar', href: '/calendar', icon: CalendarDays, group: 'main' },
+  { id: 'reminders', key: 'nav.reminders', href: '/reminders', icon: BellRing, group: 'main', parent: 'calendar' },
+  { id: 'warehouse', key: 'nav.warehouse', href: '/warehouse', icon: Warehouse, group: 'system' },
+  { id: 'archive', key: 'nav.archive', href: '/archive', icon: Archive, group: 'system', parent: 'warehouse' },
   { id: 'assistant', key: 'nav.assistant', href: '/ai-assistant', icon: Bot, group: 'system' },
   { id: 'telegram', key: 'nav.telegram', href: '/telegram', icon: Send, group: 'system', parent: 'assistant' },
-  { id: 'archive', key: 'nav.archive', href: '/archive', icon: Archive, group: 'system' },
   { id: 'developer', key: 'nav.developer', href: '/developer-center', icon: Code2, group: 'system' },
   { id: 'database', key: 'nav.database', href: '/database', icon: Database, group: 'system', parent: 'developer' },
   { id: 'docs', key: 'nav.docs', href: '/docs', icon: LifeBuoy, group: 'bottom' },

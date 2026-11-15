@@ -20,7 +20,7 @@ export const priorityKeys: Record<TaskPriority, TranslationKey> = { low: 'tasks.
 
 const NO_PROJECT = 'none';
 
-export function TaskDialog({ task, onClose, defaultProjectId }: { task: Task | 'new' | null; onClose: () => void; defaultProjectId?: string }) {
+export function TaskDialog({ task, onClose, defaultProjectId, defaultFolderId }: { task: Task | 'new' | null; onClose: () => void; defaultProjectId?: string; defaultFolderId?: string | null }) {
   const { t } = useI18n();
   const { data, create, update, setTags } = useWorkspace();
   const isNew = task === 'new';
@@ -57,7 +57,7 @@ export function TaskDialog({ task, onClose, defaultProjectId }: { task: Task | '
       due_date: form.due_date || null,
       project_id: form.project_id === NO_PROJECT ? null : form.project_id,
     };
-    const result = isNew ? await create('tasks', payload) : source ? await update('tasks', source.id, payload) : null;
+    const result = isNew ? await create('tasks', { ...payload, folder_id: defaultFolderId ?? null }) : source ? await update('tasks', source.id, payload) : null;
     if (result && (form.tags.length || source)) await setTags('task', result.id, form.tags);
     setSaving(false);
     if (result) onClose();

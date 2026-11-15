@@ -31,7 +31,7 @@ const MarkdownEditor = dynamic(() => import('@/components/markdown-editor').then
 const NONE = '__none__';
 
 /** Editor for a document (knowledge article); opened from the explorer. */
-export function ArticleDialog({ article, categories, onClose, defaultProjectId }: { article: KnowledgeArticle | 'new' | null; categories: string[]; onClose: () => void; defaultProjectId?: string }) {
+export function ArticleDialog({ article, categories, onClose, defaultProjectId, defaultFolderId }: { article: KnowledgeArticle | 'new' | null; categories: string[]; onClose: () => void; defaultProjectId?: string; defaultFolderId?: string | null }) {
   const { t } = useI18n();
   const { create, update, setTags } = useWorkspace();
   const source = article && article !== 'new' ? article : null;
@@ -55,7 +55,7 @@ export function ArticleDialog({ article, categories, onClose, defaultProjectId }
       source_url: form.source_url.trim() || null,
       content: form.content.trim() || null,
     };
-    const result = source ? await update('knowledge', source.id, { ...payload, project_id: form.project_id }) : await create('knowledge', { ...payload, project_id: form.project_id });
+    const result = source ? await update('knowledge', source.id, { ...payload, project_id: form.project_id }) : await create('knowledge', { ...payload, project_id: form.project_id, folder_id: defaultFolderId ?? null });
     if (result && (form.tagList.length || source)) await setTags('knowledge', result.id, form.tagList);
     setSaving(false);
     if (result) onClose();

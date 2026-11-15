@@ -45,7 +45,7 @@ def stats(db: Session = Depends(get_db)) -> dict[str, Any]:
     by_type: Counter[str] = Counter()
     by_source: Counter[str] = Counter()
     for at, action, entity_type, source in db.execute(
-        select(ActivityLog.at, ActivityLog.action, ActivityLog.entity_type, ActivityLog.source).where(ActivityLog.at >= since)
+        select(ActivityLog.at, ActivityLog.action, ActivityLog.entity_type, ActivityLog.source).where(ActivityLog.at >= since, ActivityLog.action != "snapshot")
     ):
         activity[_day(at)][action] += 1
         by_type[entity_type] += 1

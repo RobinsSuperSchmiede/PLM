@@ -16,7 +16,7 @@ import type { Meeting, MeetingStatus } from '@/lib/types';
 
 const statuses: MeetingStatus[] = ['planned', 'done', 'cancelled'];
 
-export function MeetingDialog({ meeting, onClose, defaultProjectId }: { meeting: Meeting | 'new' | null; onClose: () => void; defaultProjectId?: string }) {
+export function MeetingDialog({ meeting, onClose, defaultProjectId, defaultFolderId }: { meeting: Meeting | 'new' | null; onClose: () => void; defaultProjectId?: string; defaultFolderId?: string | null }) {
   const { t } = useI18n();
   const { create, update, setTags } = useWorkspace();
   const source = meeting && meeting !== 'new' ? meeting : null;
@@ -56,7 +56,7 @@ export function MeetingDialog({ meeting, onClose, defaultProjectId }: { meeting:
       notes: form.notes.trim() || null,
       status: form.status,
     };
-    const result = source ? await update('meetings', source.id, { ...payload, project_id: form.project_id }) : await create('meetings', { ...payload, project_id: form.project_id });
+    const result = source ? await update('meetings', source.id, { ...payload, project_id: form.project_id }) : await create('meetings', { ...payload, project_id: form.project_id, folder_id: defaultFolderId ?? null });
     if (result && (form.tagList.length || source)) await setTags('meeting', result.id, form.tagList);
     setSaving(false);
     if (result) onClose();

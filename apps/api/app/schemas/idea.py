@@ -14,6 +14,7 @@ class IdeaCreate(BaseModel):
     status: IdeaStatus = "new"
     tags: str | None = Field(None, max_length=255)
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class IdeaUpdate(BaseModel):
@@ -22,6 +23,7 @@ class IdeaUpdate(BaseModel):
     status: IdeaStatus | None = None
     tags: str | None = Field(None, max_length=255)
     project_id: uuid.UUID | None = None
+    folder_id: uuid.UUID | None = None
 
 
 class IdeaRead(IdeaCreate, EntityRead):

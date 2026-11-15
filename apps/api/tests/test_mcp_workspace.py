@@ -41,7 +41,12 @@ def test_mcp_builds_and_reads_connections(client: TestClient) -> None:
     assert {entry["id"] for entry in _call(client, headers, "find_by_tag", tag="#KI")} >= {project["id"], note["id"]}
     assert [entry["id"] for entry in _call(client, headers, "list_items", entity_type="note", folder_id=folder["id"])] == [note["id"]]
     assert any(hit["id"] == note["id"] for hit in _call(client, headers, "search_workspace", query="mcp notiz"))
-    assert any(entry["id"] == folder["id"] and entry["notes"] == 1 for entry in _call(client, headers, "list_folders"))
+    # Folders hold every kind of entry, and the history knows which channel changed what.
+    _call(client, headers, "move_item", entity_type="task", entity_id=task["id"], folder_id=folder["id"])
+    assert any(entry["id"] == folder["id"] and entry["entries"] == 2 for entry in _call(client, headers, "list_folders"))
+    history = _call(client, headers, "get_history", entity_id=task["id"])["items"]
+    assert history[0]["action"] == "update" and "folder_id" in history[0]["changes"] and history[-1]["action"] == "create"
+    _call(client, headers, "move_item", entity_type="task", entity_id=task["id"], folder_id=None)
 
     _call(client, headers, "move_note", note_id=note["id"], folder_id=None)
     assert _call(client, headers, "remove_tags", entity_type="note", entity_id=note["id"], tags=["mcp"]) == ["ki"]
