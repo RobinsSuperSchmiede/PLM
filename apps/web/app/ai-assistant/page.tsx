@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyButton, PageHeader, PageSkeleton, TokenField, UrlRow } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import { api, peek } from '@/lib/api';
+import { mcpSnippets } from '@/lib/mcp';
 
 type Tool = { name: string; description: string | null };
 
@@ -26,20 +27,7 @@ export default function AssistantPage() {
 
   if (loading || !settings) return <PageSkeleton />;
 
-  const token = settings.mcp_require_token ? settings.mcp_token ?? '' : '';
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : undefined;
-  const snippets = {
-    claudeCode: `claude mcp add --transport http anamnesies ${settings.mcp_url}${token ? ` \\\n  --header "Authorization: Bearer ${token}"` : ''}`,
-    desktop: JSON.stringify({
-      mcpServers: {
-        anamnesies: {
-          command: 'npx',
-          args: ['-y', 'mcp-remote', settings.mcp_url, ...(token ? ['--header', `Authorization: Bearer ${token}`] : [])],
-        },
-      },
-    }, null, 2),
-    generic: JSON.stringify({ type: 'http', url: settings.mcp_url, ...(authHeader ? { headers: authHeader } : {}) }, null, 2),
-  };
+  const snippets = mcpSnippets(settings);
 
   return (
     <div>

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, utcnow
@@ -14,6 +14,8 @@ class AppSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     language: Mapped[str] = mapped_column(String(8), default="de")
     theme: Mapped[str] = mapped_column(String(16), default="system")
+    # Set once the first-run walkthrough was finished or skipped.
+    onboarding_done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
     # Domain under which this local instance is reachable (e.g. via reverse proxy or tunnel).
     custom_domain: Mapped[str | None] = mapped_column(String(253), nullable=True)

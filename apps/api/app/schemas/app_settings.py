@@ -24,6 +24,7 @@ class SettingsRead(BaseModel):
 
     language: str
     theme: str
+    onboarding_done: bool = False
     custom_domain: str | None
     mcp_domain: str | None
     use_https: bool
@@ -46,6 +47,7 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     language: Literal["de", "en"] | None = None
     theme: Literal["light", "dark", "system"] | None = None
+    onboarding_done: bool | None = None
     custom_domain: str | None = None
     mcp_domain: str | None = None
     use_https: bool | None = None

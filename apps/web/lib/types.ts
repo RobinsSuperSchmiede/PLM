@@ -103,6 +103,7 @@ export type SmtpSecurity = 'none' | 'starttls' | 'ssl';
 export type AppSettings = {
   language: Language;
   theme: ThemePreference;
+  onboarding_done: boolean;
   custom_domain: string | null;
   mcp_domain: string | null;
   use_https: boolean;

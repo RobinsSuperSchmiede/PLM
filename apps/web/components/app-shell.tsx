@@ -13,6 +13,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TelegramMenu } from '@/components/quick-capture';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
+import { onboardingEvent } from '@/lib/onboarding';
 import { type NavItem as PageItem, type ResolvedNavItem, navItems, resolveNav, useSidebarPrefs } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +36,8 @@ const pinnedStorageKey = 'anamnesies.sidebarPinned';
 
 // The command palette is loaded the first time it opens.
 const GlobalSearch = dynamic(() => import('@/components/global-search').then((module) => module.GlobalSearch), { ssr: false });
+// The first-run walkthrough is only loaded when it is shown.
+const Walkthrough = dynamic(() => import('@/components/onboarding/walkthrough').then((module) => module.Walkthrough), { ssr: false });
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,7 +46,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const activePath = pendingHref ?? pathname;
   const { t } = useI18n();
-  const { data, error, reload } = useWorkspace();
+  const { data, error, reload, settings } = useWorkspace();
+  const [onboarding, setOnboarding] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,6 +92,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (paletteOpen) setPaletteUsed(true); }, [paletteOpen]);
+
+  // First run: the walkthrough opens until it was finished or skipped once; the settings can open it again.
+  useEffect(() => { if (settings && !settings.onboarding_done) setOnboarding(true); }, [settings]);
+  useEffect(() => {
+    const open = () => setOnboarding(true);
+    window.addEventListener(onboardingEvent, open);
+    return () => window.removeEventListener(onboardingEvent, open);
+  }, []);
 
   const togglePinned = () => {
     setPinned((value) => {
@@ -233,6 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
+      {onboarding && <Walkthrough onClose={() => setOnboarding(false)} />}
       {paletteUsed && <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={navItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />}
     </div>
   );

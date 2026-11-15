@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useEffect, useState } from 'react';
-import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, RefreshCw, Send, ServerCog, Settings2, Sun, XCircle } from 'lucide-react';
+import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, PlayCircle, RefreshCw, Send, ServerCog, Settings2, Sun, XCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ import { TelegramSettings } from '@/components/telegram-settings';
 import { Field, PageHeader, PageSkeleton, TokenField, UrlRow } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import { api, ApiError, peek } from '@/lib/api';
+import { openOnboarding } from '@/lib/onboarding';
 import type { AppSettings, DomainCheck, Language, SmtpSecurity, TelegramSettings as TelegramSettingsType, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -121,6 +122,11 @@ function GeneralSettings() {
                 <SelectItem value="en">🇬🇧 {t('settings.english')}</SelectItem>
               </SelectContent>
             </Select>
+          </SettingRow>
+        </div>
+        <div className="pt-5">
+          <SettingRow title={t('onboarding.restartTitle')} description={t('onboarding.restartDesc')}>
+            <Button variant="outline" onClick={openOnboarding}><PlayCircle />{t('onboarding.restart')}</Button>
           </SettingRow>
         </div>
       </CardContent>
