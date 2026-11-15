@@ -92,12 +92,12 @@ function ProjectWorkspace() {
 
   async function newNote() {
     const note = await create('notes', { title: '', content: '', project_id: project!.id });
-    if (note) router.push(`/notes?id=${note.id}`);
+    if (note) router.push(`/explorer?id=${note.id}`);
   }
 
   async function newDocument() {
     const doc = await create('knowledge', { title: t('projectHub.newDocument'), project_id: project!.id });
-    if (doc) router.push(`/knowledge?id=${doc.id}`);
+    if (doc) router.push(`/explorer?view=docs&id=${doc.id}`);
   }
 
   const counts: Record<Tab, number | null> = {
@@ -132,13 +132,13 @@ function ProjectWorkspace() {
         </div>
       </div>
 
-      <div className="mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b" role="tablist">
+      <div className="ds-glass no-scrollbar mb-6 inline-flex max-w-full gap-0.5 overflow-x-auto rounded-full p-[3px]" role="tablist">
         {tabs.map((value) => (
           <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}
-            className={cn('relative -mb-px flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors',
-              tab === value ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}>
+            className={cn('flex h-[22px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+              tab === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
             {t(`projectHub.${value}`)}
-            {counts[value] !== null && counts[value]! > 0 && <span className="rounded-full bg-muted px-1.5 text-[11px] tabular-nums">{counts[value]}</span>}
+            {counts[value] !== null && counts[value]! > 0 && <span className="font-mono text-[10px] tabular-nums opacity-70">{counts[value]}</span>}
           </button>
         ))}
       </div>
@@ -309,7 +309,7 @@ function ProjectWorkspace() {
         {tasks.map((item) => {
           const overdue = item.status !== 'done' && item.due_date !== null && item.due_date < today;
           return (
-            <div key={item.id} className="row-enter flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
+            <div key={item.id} className="row-enter flex items-center gap-3 rounded-full px-2.5 py-1.5 transition-colors duration-300 hover:bg-accent">
               <Checkbox checked={item.status === 'done'} onCheckedChange={(checked) => void update('tasks', item.id, { status: checked ? 'done' : 'todo' })} aria-label={item.title} />
               <button type="button" className={cn('min-w-0 flex-1 truncate text-left text-sm', item.status === 'done' && 'text-muted-foreground line-through')} onClick={() => onOpen(item)}>{item.title}</button>
               {item.priority === 'high' && item.status !== 'done' && <Badge variant="destructive">{t(priorityKeys.high)}</Badge>}
@@ -326,7 +326,7 @@ function ProjectWorkspace() {
     return (
       <div className={cn('stagger grid gap-3 sm:grid-cols-2', wide && 'xl:grid-cols-3 2xl:grid-cols-4')}>
         {notes.map((note) => (
-          <Link key={note.id} href={`/notes?id=${note.id}`} className="card-hover rounded-lg border bg-background/50 p-3">
+          <Link key={note.id} href={`/explorer?id=${note.id}`} className="rounded-2xl bg-muted p-3.5 transition-colors duration-300 hover:bg-accent">
             <p className="truncate text-sm font-medium">{note.title || t('common.untitled')}</p>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{markdownToPlainText(note.content) || t('notes.noContent')}</p>
             <p className="mt-2 text-[11px] text-muted-foreground">{formatDateTime(note.updated_at, language)}</p>
@@ -343,8 +343,8 @@ function ScheduleList({ items, dayLabels }: { items: { id: string; type: 'event'
   return (
     <div className="space-y-1">
       {items.map((item) => (
-        <Link key={item.id} href={entityHref(item.type, item.id, item.date)} className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted/50">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
+        <Link key={item.id} href={entityHref(item.type, item.id, item.date)} className="flex items-center gap-3 rounded-2xl px-2 py-1.5 transition-colors duration-300 hover:bg-accent">
+          <span className="ds-glass flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
             {item.type === 'meeting' ? <Users className="h-4 w-4 text-muted-foreground" /> : <Clock3 className="h-4 w-4 text-muted-foreground" />}
           </span>
           <span className="min-w-0 flex-1">

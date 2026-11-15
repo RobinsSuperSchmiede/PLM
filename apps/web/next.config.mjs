@@ -20,6 +20,16 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
   outputFileTracingRoot: workspaceRoot,
   turbopack: { root: workspaceRoot },
+  // Notes, documents, files and images used to be separate pages; old links land in the explorer.
+  // The query string (?id=…, ?folder=…) is carried over.
+  async redirects() {
+    return [
+      { source: '/notes', destination: '/explorer', permanent: false },
+      { source: '/knowledge', destination: '/explorer?view=docs', permanent: false },
+      { source: '/files', destination: '/explorer?view=files', permanent: false },
+      { source: '/images', destination: '/explorer?view=images', permanent: false },
+    ];
+  },
   experimental: {
     // /api/v1 passes through the middleware; uploads may be as large as the API allows (MAX_UPLOAD_MB, default 25).
     middlewareClientMaxBodySize: '30mb',

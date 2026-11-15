@@ -92,8 +92,8 @@ export default function TelegramPage() {
               </div>
               {!connected && <Button asChild className="w-full"><Link href="/settings?tab=telegram">{t('telegramHub.setup')}</Link></Button>}
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{t('telegramHub.received')}</p><p className="text-xl font-semibold tabular-nums">{incoming}</p></div>
-                <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{t('telegramHub.sentCount')}</p><p className="text-xl font-semibold tabular-nums">{log.length - incoming}</p></div>
+                <div className="rounded-xl bg-muted p-3.5"><p className="text-xs text-muted-foreground">{t('telegramHub.received')}</p><p className="text-xl font-semibold tabular-nums">{incoming}</p></div>
+                <div className="rounded-xl bg-muted p-3.5"><p className="text-xs text-muted-foreground">{t('telegramHub.sentCount')}</p><p className="text-xl font-semibold tabular-nums">{log.length - incoming}</p></div>
               </div>
             </CardContent>
           </Card>
@@ -143,8 +143,8 @@ export default function TelegramPage() {
                 {visible.map((entry) => {
                   const Icon = entry.entity_type ? entityIcons[entry.entity_type] : null;
                   return (
-                    <li key={entry.id} className="row-enter flex gap-3 rounded-lg border px-3 py-2.5">
-                      <span className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full', entry.direction === 'in' ? 'bg-info/15 text-info' : 'bg-success/15 text-success')}>
+                    <li key={entry.id} className="row-enter flex gap-3 rounded-2xl bg-muted px-3 py-2.5">
+                      <span className={cn('mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full', entry.direction === 'in' ? 'ds-glass text-foreground' : 'bg-success/15 text-success')}>
                         {entry.direction === 'in' ? <ArrowDownLeft className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -157,7 +157,7 @@ export default function TelegramPage() {
                             </Link>
                           )}
                           {projectName(entry.project_id) && entry.direction === 'in' && (
-                            <Link href={`/projects/${entry.project_id}?tab=telegram`} className="text-info hover:underline">{projectName(entry.project_id)}</Link>
+                            <Link href={`/projects/${entry.project_id}?tab=telegram`} className="underline-offset-4 hover:underline">{projectName(entry.project_id)}</Link>
                           )}
                         </p>
                       </div>

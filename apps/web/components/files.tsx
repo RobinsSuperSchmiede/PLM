@@ -37,7 +37,7 @@ export function FileKindIcon({ kind, className, boxed }: { kind: FileKind; class
   const { icon: Icon, color } = kindStyles[kind];
   if (!boxed) return <Icon className={cn('h-4 w-4 shrink-0', className)} style={{ color }} />;
   return (
-    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', className)} style={{ background: `color-mix(in srgb, ${color} 15%, transparent)` }}>
+    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', className)} style={{ background: `color-mix(in srgb, ${color} 15%, transparent)` }}>
       <Icon className="h-[18px] w-[18px]" style={{ color }} />
     </span>
   );
@@ -114,7 +114,7 @@ export function DropZone({ onFiles, children, className, label }: { onFiles: (fi
       {children}
       {over && (
         <div className="pointer-events-none absolute inset-2 z-20 flex flex-col items-center justify-center gap-2 rounded-[16px] bg-popover text-center outline-dashed outline-[1.5px] -outline-offset-[1.5px] outline-foreground/20 backdrop-blur-surface duration-300 animate-in fade-in">
-          <Upload className="h-6 w-6 text-brand" />
+          <Upload className="h-6 w-6" />
           <p className="text-sm font-medium">{label ?? t('files.drop')}</p>
           <p className="text-xs text-muted-foreground">{t('files.dropHint')}</p>
         </div>
@@ -149,9 +149,9 @@ export function FilePreview({ file, className }: { file: StoredFile; className?:
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={fileUrl(file.id)} alt={file.name} className={cn('max-h-full max-w-full rounded-lg object-contain', className)} />;
   }
-  if (file.kind === 'pdf') return <iframe src={fileUrl(file.id)} title={file.name} className={cn('h-full min-h-[480px] w-full rounded-lg border bg-white', className)} />;
+  if (file.kind === 'pdf') return <iframe src={fileUrl(file.id)} title={file.name} className={cn('h-full min-h-[480px] w-full rounded-[14px] bg-white', className)} />;
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-10 text-center', className)}>
+    <div className={cn('flex flex-col items-center justify-center gap-3 rounded-[18px] p-10 text-center outline-dashed outline-[1.5px] -outline-offset-[1.5px] outline-foreground/15', className)}>
       <FileKindIcon kind={file.kind} boxed className="h-14 w-14" />
       <p className="max-w-xs text-sm text-muted-foreground">{t('files.noPreview')}</p>
       <Button variant="outline" size="sm" asChild><a href={fileUrl(file.id, true)}><Download />{t('files.download')}</a></Button>
@@ -191,11 +191,11 @@ export function AttachmentsPanel({ type, id, projectId, className }: { type: Ent
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2">
             {attached.map(({ linkId, file }) => (
-              <li key={linkId} className="group flex items-center gap-3 rounded-lg bg-card/60 shadow-sm p-2 pr-2.5 transition-colors hover:bg-accent/50">
+              <li key={linkId} className="group flex items-center gap-3 rounded-2xl bg-muted p-2 pr-2.5 transition-colors duration-300 hover:bg-accent">
                 <button type="button" onClick={() => setPreview(file)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   {file.kind === 'image' ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumbnailUrl(file.id, 160)} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-md object-cover" />
+                    <img src={thumbnailUrl(file.id, 160)} alt="" loading="lazy" decoding="async" className="h-9 w-9 shrink-0 rounded-xl object-cover" />
                   ) : <FileKindIcon kind={file.kind} boxed />}
                   <span className="min-w-0">
                     <span className="block truncate text-sm">{file.name}</span>

@@ -69,8 +69,8 @@ export default function ArchivePage() {
           <div className="mb-5 flex flex-wrap gap-1.5" role="tablist">
             {(['all', ...typesPresent] as const).map((entry) => (
               <button key={entry} type="button" role="tab" aria-selected={type === entry} onClick={() => setType(entry)}
-                className={cn('rounded-full border px-3 py-1 text-xs transition-[background-color,border-color,color,transform] duration-200 active:scale-95',
-                  type === entry ? 'border-foreground/30 bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent')}>
+                className={cn('flex h-[22px] items-center gap-1.5 rounded-full px-2.5 text-xs transition-[background-color,color,box-shadow] duration-300 ease-ds active:scale-95',
+                  type === entry ? 'bg-primary font-medium text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground')}>
                 {entry === 'all' ? t('tags.allTypes') : t(entityLabelKeys[entry])}
                 <span className="ml-1 tabular-nums opacity-70">{entry === 'all' ? items.length : items.filter((item) => item.type === entry).length}</span>
               </button>

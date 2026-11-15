@@ -109,7 +109,7 @@ export default function ProjectsPage() {
                   </div>
                   <div className="space-y-1">
                     {tasks.filter((task) => task.status !== 'done').slice(0, 4).map((task) => (
-                      <label key={task.id} className="flex items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-muted/50">
+                      <label key={task.id} className="flex items-center gap-2 rounded-full px-2 py-1 text-[13px] transition-colors duration-300 hover:bg-accent">
                         <Checkbox checked={task.status === 'done'} onCheckedChange={(checked) => void update('tasks', task.id, { status: checked ? 'done' : 'todo' })} />
                         <span className={cn('truncate', task.status === 'done' && 'text-muted-foreground line-through')}>{task.title}</span>
                       </label>

@@ -198,8 +198,8 @@ export function TelegramMenu() {
         {recent.length > 0 && (
           <ul className="space-y-1 border-t px-2 py-2">
             {recent.map((entry) => (
-              <li key={entry.id} className="flex items-start gap-2 rounded-md px-2 py-1.5 text-xs">
-                {entry.direction === 'in' ? <ArrowDownLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" /> : <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />}
+              <li key={entry.id} className="flex items-start gap-2 rounded-xl px-2 py-1.5 text-xs">
+                {entry.direction === 'in' ? <ArrowDownLeft className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success" />}
                 <span className="min-w-0 flex-1 truncate">{entry.text}</span>
                 <span className="shrink-0 text-muted-foreground">{formatDateTime(entry.at, language)}</span>
               </li>

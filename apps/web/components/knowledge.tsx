@@ -78,7 +78,7 @@ export function TagInput({ value, onChange, className, autoFocus }: { value: str
     <Popover open={open && (suggestions.length > 0 || Boolean(normalized))} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
         <div
-          className={cn('flex min-h-10 flex-wrap items-center gap-1.5 rounded-lg bg-field shadow-sm px-2 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-[3px] focus-within:ring-ring', className)}
+          className={cn('flex min-h-10 flex-wrap items-center gap-1.5 rounded-2xl bg-field px-2 py-1.5 shadow-sm transition-shadow focus-within:border-ring/40 focus-within:ring-[3px] focus-within:ring-ring', className)}
           onClick={() => input.current?.focus()}
         >
           {value.map((name) => <TagChip key={name} name={name} onRemove={() => onChange(value.filter((entry) => entry !== name))} />)}
@@ -109,14 +109,14 @@ export function TagInput({ value, onChange, className, autoFocus }: { value: str
       </PopoverAnchor>
       <PopoverContent className="w-64 p-1" onOpenAutoFocus={(event) => event.preventDefault()}>
         {suggestions.map((tag) => (
-          <button key={tag.id} type="button" onClick={() => add(tag.name)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent">
+          <button key={tag.id} type="button" onClick={() => add(tag.name)} className="flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-[13px] hover:bg-accent">
             <Hash className="h-3.5 w-3.5" style={{ color: `hsl(${hueOf(tag.name)} 70% 55%)` }} />
             <span className="flex-1 truncate">{tag.name}</span>
             <span className="text-xs tabular-nums text-muted-foreground">{tag.count}</span>
           </button>
         ))}
         {normalized && !tags.some((tag) => tag.name === normalized) && !value.includes(normalized) && (
-          <button type="button" onClick={() => add(normalized)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent">
+          <button type="button" onClick={() => add(normalized)} className="flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-[13px] hover:bg-accent">
             <Plus className="h-3.5 w-3.5 text-muted-foreground" />
             {t('tags.create', { name: normalized })}
           </button>
@@ -276,7 +276,7 @@ function RelationGroup({ icon: Icon, title, items, onRemove }: { icon: typeof Li
         {items.map((item) => {
           const ItemIcon = entityIcons[item.type];
           return (
-            <li key={`${item.type}:${item.id}`} className="group flex items-center gap-2 rounded-lg bg-card/60 shadow-sm px-2.5 py-2 transition-colors hover:bg-accent/60">
+            <li key={`${item.type}:${item.id}`} className="group flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 transition-colors duration-300 hover:bg-accent">
               <ItemIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Link href={item.href} className="min-w-0 flex-1">
                 <span className="block truncate text-sm">{item.title || t('common.untitled')}</span>

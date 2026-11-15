@@ -59,7 +59,7 @@ export default function DocsPage() {
       </>
     )}>
       <article ref={scroller} key={section.id} className="mx-auto max-w-3xl px-6 pb-24 pt-10 duration-300 animate-in fade-in slide-in-from-bottom-1 sm:px-10">
-        <p className="flex items-center gap-2 text-[11px] font-medium text-brand"><BookMarked className="h-3.5 w-3.5" />{t('nav.docs')} · {index + 1}/{sections.length}</p>
+        <p className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><BookMarked className="h-3.5 w-3.5" />{t('nav.docs')} · {index + 1}/{sections.length}</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{section.title}</h1>
         <p className="mt-2 text-lg text-muted-foreground">{section.summary}</p>
         <div className="mt-8 space-y-5 text-[15px] leading-7">
@@ -76,19 +76,19 @@ function Block({ block }: { block: DocBlock }) {
   if ('p' in block) return <p className="text-foreground/90">{block.p}</p>;
   if ('tip' in block) {
     return (
-      <div className="flex gap-3 rounded-xl border border-brand/30 bg-brand/5 p-4 text-sm">
-        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-brand" /><p>{block.tip}</p>
+      <div className="flex gap-3 rounded-xl bg-muted p-3.5 text-[13px]">
+        <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><p>{block.tip}</p>
       </div>
     );
   }
   if ('code' in block) return <pre className="overflow-x-auto rounded-xl bg-muted p-4 font-mono text-[13px] leading-6">{block.code}</pre>;
-  if ('list' in block) return <ul className="list-disc space-y-1.5 pl-5 marker:text-brand">{block.list.map((item) => <li key={item}>{item}</li>)}</ul>;
+  if ('list' in block) return <ul className="list-disc space-y-1.5 pl-5 marker:text-muted-foreground">{block.list.map((item) => <li key={item}>{item}</li>)}</ul>;
   if ('steps' in block) {
     return (
       <ol className="space-y-3">
         {block.steps.map((item, position) => (
           <li key={item} className="flex gap-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-semibold text-brand">{position + 1}</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center ds-glass rounded-full text-xs font-semibold">{position + 1}</span>
             <span className="pt-0.5">{item}</span>
           </li>
         ))}
@@ -96,7 +96,7 @@ function Block({ block }: { block: DocBlock }) {
     );
   }
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl bg-muted">
       <table className="w-full text-sm">
         <tbody className="divide-y">
           {block.table.map(([key, value]) => (

@@ -490,3 +490,23 @@ main .grid > * {
 svg.lucide[stroke-width='2'] {
   stroke-width: 1.6;
 }
+
+/* ---------- Folder icon (3D, from the design system): sheets rise out of the folder on hover ---------- */
+:root { --f-back: #DADADF; --f-flap: rgba(238, 238, 241, .86); --f-card: #FFFFFF; --f-line: #E2E2E7; --f-hi: rgba(255, 255, 255, .9); }
+:root.dark { --f-back: #26262A; --f-flap: rgba(54, 54, 60, .82); --f-card: #E6E6EA; --f-line: #C4C4CB; --f-hi: rgba(255, 255, 255, .14); }
+:root[data-wallpaper='on'] { --f-back: rgba(255, 255, 255, .42); --f-flap: rgba(255, 255, 255, .6); --f-card: #FFFFFF; --f-line: #E2E2E7; --f-hi: rgba(255, 255, 255, .9); }
+.f3d { position: relative; width: 58%; aspect-ratio: 321 / 270; margin-top: 6%; perspective: 520px; }
+.f3d .f-back { position: absolute; left: 0; right: 0; bottom: 0; top: 8%; border-radius: 9% / 11%; background: var(--f-back); }
+.f3d .f-back::before { content: ''; position: absolute; left: 0; top: -7%; width: 44%; height: 20%; border-radius: 22% 22% 0 0 / 50% 50% 0 0; background: var(--f-back); }
+.f3d .f-card { position: absolute; left: 25%; bottom: 12%; width: 50%; aspect-ratio: 164 / 214; border-radius: 12% / 9%; background: var(--f-card); box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 0 0 .5px rgba(0, 0, 0, .05); padding: 14% 10%; box-sizing: border-box; display: flex; flex-direction: column; gap: 6%; transform-origin: 50% 100%; transition: transform .5s cubic-bezier(.34, 1.45, .6, 1); }
+.f3d .f-card i { display: block; height: 3.2%; min-height: 2px; border-radius: 2px; background: var(--f-line); }
+.f3d .f-card i:first-child { width: 78%; height: 5.5%; min-height: 3px; margin-bottom: 4%; }
+.f3d .f-card i:nth-child(odd):not(:first-child) { width: 88%; }
+.f3d .f-card.c1 { transform: translate(24%, -4%) rotate(10deg); }
+.f3d .f-card.c2 { transform: translate(2%, -9%) rotate(2deg); }
+.f3d .f-card.c3 { transform: translate(-24%, -10%) rotate(-5deg); }
+.f3d .f-flap { position: absolute; left: 0; right: 0; bottom: 0; height: 80%; border-radius: 9% / 12%; background: var(--f-flap); box-shadow: inset 0 1px 0 var(--f-hi), 0 -1px 6px rgba(0, 0, 0, .05); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transform-origin: 50% 100%; transform: rotateX(-14deg); transition: transform .55s cubic-bezier(.34, 1.3, .6, 1); }
+.group:hover .f3d .f-card.c1, .f3d.is-open .f-card.c1 { transform: translate(26%, -16%) rotate(14deg); transition-delay: .06s; }
+.group:hover .f3d .f-card.c2, .f3d.is-open .f-card.c2 { transform: translate(2%, -20%) rotate(-1deg); transition-delay: .03s; }
+.group:hover .f3d .f-card.c3, .f3d.is-open .f-card.c3 { transform: translate(-26%, -22%) rotate(-9deg); }
+.group:hover .f3d .f-flap, .f3d.is-open .f-flap { transform: rotateX(-38deg); }

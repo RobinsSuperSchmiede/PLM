@@ -31,7 +31,7 @@ export function FilterBar({ filters, sort, className, children }: {
         return (
           <Select key={filter.key} value={filter.value} onValueChange={filter.onChange}>
             <SelectTrigger aria-label={filter.label}
-              className={cn('h-8 w-auto gap-1.5 rounded-full px-3 text-xs', isActive ? 'border-brand/40 bg-brand/10 font-medium text-foreground' : 'text-muted-foreground')}>
+              className={cn('h-7 w-auto gap-1.5 rounded-full px-3 text-xs', isActive ? 'bg-seg font-medium text-foreground shadow-sm' : 'text-muted-foreground')}>
               {selected?.color && isActive && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: selected.color }} />}
               <span className="text-muted-foreground">{filter.label}:</span>
               <SelectValue />

@@ -24,8 +24,8 @@ import { cn } from '@/lib/utils';
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
+      <div className="space-y-2">
+        <h1 className="text-[26px] font-semibold leading-none tracking-[-0.02em]">{title}</h1>
         {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
@@ -41,7 +41,7 @@ export function EmptyState({ title, description, action, icon: Icon = Inbox, cla
   className?: string;
 }) {
   return (
-    <div className={cn('group flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-foreground/20 bg-muted px-6 py-12 text-center', className)}>
+    <div className={cn('group flex min-h-48 flex-col items-center justify-center rounded-[18px] bg-muted px-6 py-12 text-center outline-dashed outline-[1.5px] -outline-offset-[1.5px] outline-foreground/15', className)}>
       <div className="relative mb-4">
         <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-field shadow-sm">
           <DotLoader size={30} animated={false} hoverAnimated className="text-muted-foreground transition-colors duration-200 group-hover:text-foreground" />
@@ -175,7 +175,7 @@ export function UrlRow({ label, value }: { label: string; value: string }) {
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 font-mono text-xs">{value}</code>
+        <code className="flex-1 truncate rounded-full bg-muted px-3 py-1.5 font-mono text-xs">{value}</code>
         <CopyButton value={value} />
       </div>
     </div>
@@ -186,7 +186,7 @@ export function TokenField({ value }: { value: string }) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <button type="button" onClick={() => setVisible((current) => !current)} className="flex-1 truncate rounded-md bg-muted px-3 py-1.5 text-left font-mono text-xs" aria-label="Toggle token visibility">
+      <button type="button" onClick={() => setVisible((current) => !current)} className="flex-1 truncate rounded-full bg-muted px-3 py-1.5 text-left font-mono text-xs" aria-label="Toggle token visibility">
         <KeyRound className="mr-2 inline h-3.5 w-3.5 text-muted-foreground" />
         {visible ? value : '•'.repeat(32)}
       </button>

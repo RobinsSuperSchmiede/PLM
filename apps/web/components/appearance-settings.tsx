@@ -10,10 +10,11 @@ import { TagChip } from '@/components/knowledge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Segmented } from '@/components/ui/segmented';
 import { Switch } from '@/components/ui/switch';
 import { useWorkspace } from '@/components/workspace-provider';
 import {
-  type Accent, type Appearance, accents, compressWallpaper, defaultAppearance, loadAppearance, loadWallpaper, saveAppearance, saveWallpaper,
+  type Accent, type Ambient, type Appearance, accents, ambients, compressWallpaper, defaultAppearance, loadAppearance, loadWallpaper, saveAppearance, saveWallpaper,
 } from '@/lib/appearance';
 import type { ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -27,11 +28,10 @@ export function AppearanceSettings() {
   useEffect(() => setValue(loadAppearance()), []);
 
   const set = (patch: Partial<Appearance>) => {
-    setValue((current) => {
-      const next = { ...current, ...patch };
-      saveAppearance(next);
-      return next;
-    });
+    // Saving notifies other components, so it must not happen inside the state updater (during render).
+    const next = { ...value, ...patch };
+    setValue(next);
+    saveAppearance(next);
   };
 
   const themes: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
@@ -49,7 +49,7 @@ export function AppearanceSettings() {
               {themes.map(({ value: option, label, icon: Icon }) => (
                 <button key={option} type="button" role="radio" aria-checked={theme === option}
                   onClick={() => { setTheme(option); void saveSettings({ theme: option }); }}
-                  className={cn('flex flex-col items-center gap-2 rounded-lg p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds', theme === option ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}>
+                  className={cn('flex flex-col items-center gap-2 rounded-xl p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds', theme === option ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}>
                   <Icon className="h-5 w-5" />{label}
                 </button>
               ))}
@@ -58,6 +58,29 @@ export function AppearanceSettings() {
 
           <Section title={t('appearance.wallpaper')} description={t('appearance.wallpaperDesc')}>
             <WallpaperPicker dim={value.wallpaperDim} onDimChange={(wallpaperDim) => set({ wallpaperDim })} />
+          </Section>
+
+          <Section title={t('ambient.title')} description={t('ambient.description')}>
+            <div className="grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-5" role="radiogroup" aria-label={t('ambient.title')}>
+              {ambients.map((option) => (
+                <button key={option} type="button" role="radio" aria-checked={value.ambient === option} onClick={() => set({ ambient: option })}
+                  className={cn('flex flex-col items-center gap-2 rounded-xl px-2 py-3 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring', value.ambient === option ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}>
+                  <span className="flex h-10 items-center whitespace-pre font-mono text-xs leading-none text-muted-foreground" aria-hidden="true">{ambientGlyphs[option]}</span>
+                  {t(`ambient.${option}`)}
+                </button>
+              ))}
+            </div>
+            {value.ambient !== 'none' && (
+              <div className="max-w-xl space-y-2">
+                <div className="flex items-center gap-4">
+                  <span className="w-28 shrink-0 text-[13px]">{t('ambient.strength')}</span>
+                  <input type="range" min={10} max={100} step={5} value={value.ambientStrength} onChange={(event) => set({ ambientStrength: Number(event.target.value) })}
+                    aria-label={t('ambient.strength')} className="flex-1 accent-[hsl(var(--foreground))]" />
+                  <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{value.ambientStrength}%</span>
+                </div>
+                {value.reduceMotion && <p className="ds-label">{t('ambient.still')}</p>}
+              </div>
+            )}
           </Section>
 
           <Section title={t('appearance.accent')} description={t('appearance.accentDesc')}>
@@ -121,6 +144,9 @@ export function AppearanceSettings() {
     </div>
   );
 }
+
+/** Tiny previews for the animation picker. */
+const ambientGlyphs: Record<Ambient, string> = { none: '—', aquarium: '><(((°>', sun: '\\ | /\n— ● —\n/ | \\', rain: "' | '\n | ' |", stars: '. * ·\n+ . *' };
 
 function WallpaperPicker({ dim, onDimChange }: { dim: number; onDimChange: (value: number) => void }) {
   const { t } = useI18n();
@@ -216,18 +242,5 @@ function Toggle({ title, description, checked, onChange }: { title: string; desc
       <span><span className="block text-sm">{title}</span><span className="block text-xs text-muted-foreground">{description}</span></span>
       <Switch checked={checked} onCheckedChange={onChange} />
     </label>
-  );
-}
-
-function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
-  return (
-    <div className="inline-flex gap-0.5 rounded-full ds-glass p-[3px]" role="radiogroup" aria-label={label}>
-      {options.map((option) => (
-        <button key={option.value} type="button" role="radio" aria-checked={value === option.value} onClick={() => onChange(option.value)}
-          className={cn('h-[22px] rounded-full px-4 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds', value === option.value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-          {option.label}
-        </button>
-      ))}
-    </div>
   );
 }

@@ -118,8 +118,8 @@ export function DashboardInsights() {
   const tasksTotal = stats.counts.task;
   const taskPercent = tasksTotal ? Math.round((stats.tasks_done / tasksTotal) * 100) : 0;
   const usage: { type: EntityType; href: string }[] = [
-    { type: 'note', href: '/notes' }, { type: 'task', href: '/tasks' }, { type: 'event', href: '/calendar' },
-    { type: 'project', href: '/projects' }, { type: 'knowledge', href: '/knowledge' }, { type: 'meeting', href: '/meetings' },
+    { type: 'note', href: '/explorer?view=notes' }, { type: 'task', href: '/tasks' }, { type: 'event', href: '/calendar' },
+    { type: 'project', href: '/projects' }, { type: 'knowledge', href: '/explorer?view=docs' }, { type: 'meeting', href: '/meetings' },
   ];
 
   const apiSplit = apiDays.reduce((acc, day) => {

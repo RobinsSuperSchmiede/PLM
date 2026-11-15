@@ -15,6 +15,9 @@ export const accents = {
 export type Accent = keyof typeof accents;
 export type Density = 'compact' | 'comfortable';
 export type Surface = 'layered' | 'flat';
+/** Decorative animation behind the workspace: ASCII scenes or a pixel sun. */
+export const ambients = ['none', 'aquarium', 'sun', 'rain', 'stars'] as const;
+export type Ambient = typeof ambients[number];
 
 export type Appearance = {
   accent: Accent;
@@ -26,6 +29,9 @@ export type Appearance = {
   reduceMotion: boolean;
   /** How strongly the wallpaper is washed towards the page color (0–80 %), for legibility. */
   wallpaperDim: number;
+  ambient: Ambient;
+  /** How visible the background animation is (10–100 %). */
+  ambientStrength: number;
 };
 
 export const defaultAppearance: Appearance = {
@@ -36,9 +42,13 @@ export const defaultAppearance: Appearance = {
   accentButtons: false,
   reduceMotion: false,
   wallpaperDim: 25,
+  ambient: 'none',
+  ambientStrength: 35,
 };
 
 export const appearanceStorageKey = 'anamnesies.appearance';
+/** Fired on window whenever the appearance was saved (the background animation listens to it). */
+export const appearanceChangeEvent = 'anamnesies:appearance';
 /** The wallpaper image (a compressed JPEG data URL) lives in its own key so the settings stay small. */
 export const wallpaperStorageKey = 'anamnesies.wallpaper';
 
@@ -99,7 +109,8 @@ export async function compressWallpaper(file: File, maxEdge = 2400, quality = 0.
 export function loadAppearance(): Appearance {
   try {
     const stored = window.localStorage.getItem(appearanceStorageKey);
-    return stored ? { ...defaultAppearance, ...(JSON.parse(stored) as Partial<Appearance>) } : defaultAppearance;
+    const value = stored ? { ...defaultAppearance, ...(JSON.parse(stored) as Partial<Appearance>) } : defaultAppearance;
+    return ambients.includes(value.ambient) ? value : { ...value, ambient: 'none' };
   } catch {
     return defaultAppearance;
   }
@@ -110,6 +121,7 @@ export function saveAppearance(value: Appearance) {
     window.localStorage.setItem(appearanceStorageKey, JSON.stringify(value));
   } catch { /* storage unavailable */ }
   applyAppearance(value);
+  window.dispatchEvent(new Event(appearanceChangeEvent));
 }
 
 /** Runs before the first paint (inline in <head>) so the saved look shows without flicker. */

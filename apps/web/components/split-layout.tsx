@@ -23,7 +23,7 @@ export function SplitLayout({ sidebar, children, sidebarClassName, className, wi
   const [open, setOpen] = useState(false);
   return (
     <div className={cn('grid lg:h-[calc(100vh-3.5rem)]', wide ? 'lg:grid-cols-[300px_minmax(0,1fr)]' : 'lg:grid-cols-[260px_minmax(0,1fr)] 2xl:grid-cols-[290px_minmax(0,1fr)]', className)}>
-      <div className="border-b lg:hidden">
+      <div className="lg:hidden">
         <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}
           className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-muted-foreground">
           <SlidersHorizontal className="h-4 w-4" />
@@ -31,7 +31,7 @@ export function SplitLayout({ sidebar, children, sidebarClassName, className, wi
           <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', open && 'rotate-180')} />
         </button>
       </div>
-      <aside className={cn('min-h-0 overflow-y-auto border-b bg-card/60 lg:block lg:border-b-0 lg:border-r', open ? 'block max-h-[55vh] lg:max-h-none duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden', sidebarClassName)}
+      <aside className={cn('min-h-0 overflow-y-auto lg:block lg:pl-2', open ? 'block max-h-[55vh] lg:max-h-none duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden', sidebarClassName)}
         onClick={(event) => {
           // On phones, picking an entry closes the panel again.
           if (window.innerWidth < 1024 && (event.target as HTMLElement).closest('button[aria-current], li > button')) setOpen(false);
@@ -52,7 +52,7 @@ export function SidebarSection({ title, children, action }: { title?: string; ch
           {action}
         </div>
       )}
-      <ul className="space-y-px">{children}</ul>
+      <ul className="space-y-0.5">{children}</ul>
     </div>
   );
 }
@@ -68,13 +68,12 @@ export function SidebarItem({ active, onClick, icon, label, count, color }: {
   return (
     <li>
       <button type="button" onClick={onClick} aria-current={active ? 'true' : undefined}
-        className={cn('relative flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors duration-150',
-          active ? 'bg-accent font-medium text-foreground' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground')}>
-        {active && <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-brand" aria-hidden="true" />}
+        className={cn('flex h-[26px] w-full items-center gap-[7px] rounded-full px-2.5 text-left text-[13px] transition-[background-color,color,box-shadow] duration-300 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
+          active ? 'ds-glass font-medium text-foreground' : 'text-[hsl(var(--fg-2)/var(--fg-2-a))] hover:bg-accent hover:text-foreground')}>
         {color && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />}
         {icon}
         <span className="flex-1 truncate">{label}</span>
-        {count !== undefined && <span className="text-xs tabular-nums text-muted-foreground">{count}</span>}
+        {count !== undefined && <span className="font-mono text-[10px] text-muted-foreground">{count}</span>}
       </button>
     </li>
   );
@@ -83,9 +82,9 @@ export function SidebarItem({ active, onClick, icon, label, count, color }: {
 /** Title row at the top of a content pane. */
 export function PaneHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-3 border-b px-5 py-4 sm:px-8 xl:flex-row xl:items-center xl:justify-between">
+    <div className="flex flex-col gap-3 px-5 pb-3 pt-5 sm:px-8 xl:flex-row xl:items-center xl:justify-between">
       <div className="min-w-0">
-        <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+        <h1 className="truncate text-[26px] font-semibold leading-none tracking-[-0.02em]">{title}</h1>
         {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

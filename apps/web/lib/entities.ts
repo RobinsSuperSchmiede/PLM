@@ -65,7 +65,7 @@ export function resourceOf(type: EntityType): ResourceName {
   return resources[type];
 }
 
-export type ResolvedEntity = EntityRef & { title: string; preview: string; projectId: string | null; updatedAt: string; href: string; date?: string };
+export type ResolvedEntity = EntityRef & { title: string; preview: string; projectId: string | null; updatedAt: string; createdAt: string; href: string; date?: string };
 
 export function resolveEntity(data: Collections, type: EntityType, id: string): ResolvedEntity | null {
   const item = (data[resources[type]] as { id: string }[]).find((entry) => entry.id === id);
@@ -76,7 +76,7 @@ export function allEntities(data: Collections, types: EntityType[] = contentType
   return types.flatMap((type) => (data[resources[type]] as never[]).map((item) => describe(type, item)));
 }
 
-function describe(type: EntityType, item: Record<string, unknown> & { id: string; updated_at: string }): ResolvedEntity {
+function describe(type: EntityType, item: Record<string, unknown> & { id: string; updated_at: string; created_at?: string }): ResolvedEntity {
   const text = (key: string) => (typeof item[key] === 'string' ? (item[key] as string) : '');
   const title = type === 'project' || type === 'folder' || type === 'file' ? text('name') : text('title');
   const preview = {
@@ -90,6 +90,7 @@ function describe(type: EntityType, item: Record<string, unknown> & { id: string
     preview: markdownToPlainText(preview),
     projectId: (item.project_id as string | null | undefined) ?? (type === 'project' ? item.id : null),
     updatedAt: item.updated_at,
+    createdAt: item.created_at ?? item.updated_at,
     href: entityHref(type, item.id, text('date')),
     date: text('date') || text('due_date') || undefined,
   };
@@ -97,15 +98,15 @@ function describe(type: EntityType, item: Record<string, unknown> & { id: string
 
 export function entityHref(type: EntityType, id: string, date?: string): string {
   switch (type) {
-    case 'note': return `/notes?id=${id}`;
+    case 'note': return `/explorer?id=${id}`;
     case 'task': return `/tasks?id=${id}`;
     case 'event': return date ? `/calendar?date=${date}&id=${id}` : `/calendar?id=${id}`;
     case 'meeting': return `/meetings?id=${id}`;
     case 'project': return `/projects/${id}`;
-    case 'knowledge': return `/knowledge?id=${id}`;
+    case 'knowledge': return `/explorer?view=docs&id=${id}`;
     case 'idea': return `/ideas?id=${id}`;
-    case 'folder': return `/notes?folder=${id}`;
-    case 'file': return `/files?id=${id}`;
+    case 'folder': return `/explorer?folder=${id}`;
+    case 'file': return `/explorer?view=files&id=${id}`;
   }
 }
 

@@ -91,10 +91,10 @@ export default function TasksPage() {
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {summary.map((item) => (
           <button key={item.key} type="button" onClick={item.onClick}
-            className="group flex items-center gap-3 rounded-xl bg-card/60 shadow-sm px-4 py-3 text-left transition-colors hover:bg-accent/60">
-            <span className="h-8 w-1 rounded-full" style={{ background: item.color }} />
+            className="group flex items-center gap-3 rounded-[18px] bg-card px-4 py-3 text-left shadow-sm transition-[transform,box-shadow] duration-300 ease-ds hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+            <span className="h-2 w-2 rounded-full" style={{ background: item.color }} />
             <span>
-              <span className="block text-xl font-semibold tabular-nums">{item.value}</span>
+              <span className="block text-xl font-semibold leading-tight tracking-[-0.02em] tabular-nums">{item.value}</span>
               <span className="block text-xs text-muted-foreground">{item.label}</span>
             </span>
           </button>
@@ -135,7 +135,7 @@ export default function TasksPage() {
               const late = !done && task.due_date !== null && task.due_date < today;
               const taskProject = task.project_id ? projects.get(task.project_id) : undefined;
               return (
-                <div className="group relative flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors duration-150 hover:bg-accent">
+                <div className="group relative flex items-center gap-3 rounded-2xl px-2.5 py-2 transition-colors duration-300 hover:bg-accent">
                   <Checkbox checked={done} onCheckedChange={(checked) => void update('tasks', task.id, { status: checked ? 'done' : 'todo' })} aria-label={`${t('tasks.done')}: ${task.title}`} />
                   <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setEditing(task)}>
                     <p className={cn('truncate text-[13px] font-medium transition-colors duration-200', done && 'text-muted-foreground line-through')}>{task.title}</p>

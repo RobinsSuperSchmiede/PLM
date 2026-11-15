@@ -69,7 +69,7 @@ export default function RemindersPage() {
           <span className="hidden sm:inline">· {t('reminders.timezoneHint', { timezone: telegram.timezone })}</span>
         </p>
       ) : (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 sm:flex-row sm:items-center">
+        <div className="mb-6 flex flex-col gap-3 rounded-[18px] bg-warning/10 p-[18px] sm:flex-row sm:items-center">
           <Send className="h-5 w-5 shrink-0 text-warning" />
           <div className="flex-1 text-sm">
             <p className="font-medium">{t('reminders.telegramMissing')}</p>
@@ -131,8 +131,8 @@ function QuickAdd() {
             type="button"
             onClick={() => setWhen(preset.value)}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs transition-[background-color,border-color,color,transform] duration-200 hover:border-foreground/20 hover:bg-accent active:scale-95',
-              when === preset.value ? 'border-foreground/30 bg-accent font-medium text-foreground' : 'text-muted-foreground',
+              'flex h-[22px] items-center gap-1.5 rounded-full px-2.5 text-xs transition-[background-color,color,box-shadow] duration-300 ease-ds active:scale-95',
+              when === preset.value ? 'bg-primary font-medium text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
             )}
           >
             {t(preset.key)}

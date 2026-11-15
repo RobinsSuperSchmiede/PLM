@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useEffect, useState } from 'react';
-import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, RefreshCw, Send, ServerCog, Settings2, Sun, XCircle } from 'lucide-react';
+import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, RefreshCw, Send, ServerCog, Settings2, Sun, XCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
 import { AppearanceSettings } from '@/components/appearance-settings';
+import { SidebarSettings } from '@/components/sidebar-settings';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +24,7 @@ import { api, ApiError, peek } from '@/lib/api';
 import type { AppSettings, DomainCheck, Language, SmtpSecurity, TelegramSettings as TelegramSettingsType, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const tabs = ['general', 'appearance', 'domain', 'mcp', 'telegram', 'email', 'security'] as const;
+const tabs = ['general', 'appearance', 'sidebar', 'domain', 'mcp', 'telegram', 'email', 'security'] as const;
 
 export default function SettingsPage() {
   return <Suspense fallback={<PageSkeleton />}><SettingsView /></Suspense>;
@@ -45,6 +46,7 @@ function SettingsView() {
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="general"><Settings2 />{t('settings.general')}</TabsTrigger>
           <TabsTrigger value="appearance"><Palette />{t('appearance.title')}</TabsTrigger>
+          <TabsTrigger value="sidebar"><PanelLeft />{t('sidebar.title')}</TabsTrigger>
           <TabsTrigger value="domain"><Globe />{t('settings.domain')}</TabsTrigger>
           <TabsTrigger value="mcp"><ServerCog />{t('settings.mcp')}</TabsTrigger>
           <TabsTrigger value="telegram"><Send />{t('settings.telegram')}</TabsTrigger>
@@ -53,6 +55,7 @@ function SettingsView() {
         </TabsList>
         <TabsContent value="general"><GeneralSettings /></TabsContent>
         <TabsContent value="appearance"><AppearanceSettings /></TabsContent>
+        <TabsContent value="sidebar"><SidebarSettings /></TabsContent>
         <TabsContent value="domain"><DomainSettings settings={settings} /></TabsContent>
         <TabsContent value="mcp"><McpSettings settings={settings} /></TabsContent>
         <TabsContent value="telegram"><TelegramSettings /></TabsContent>
@@ -101,7 +104,7 @@ function GeneralSettings() {
                 role="radio"
                 aria-checked={theme === value}
                 onClick={() => { setTheme(value); void saveSettings({ theme: value }); }}
-                className={cn('flex flex-col items-center gap-2 rounded-lg p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds', theme === value ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}
+                className={cn('flex flex-col items-center gap-2 rounded-xl p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds', theme === value ? 'bg-seg font-medium shadow-sm' : 'bg-muted hover:bg-accent')}
               >
                 <Icon className="h-[18px] w-[18px]" strokeWidth={1.6} />
                 {label}

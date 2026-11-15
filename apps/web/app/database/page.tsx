@@ -131,7 +131,7 @@ function Overview({ schema, relations, onSelect }: { schema: DbSchema; relations
         </Card>
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
-        <BarList title={t('dbx.biggest')} items={biggest.map((table) => ({ name: table.name, value: table.size ?? table.rows, label: table.size !== null ? formatBytes(table.size) : `${table.rows.toLocaleString(language)} ${t('dbx.rows')}` }))} max={maxSize} onSelect={onSelect} tone="bg-info" />
+        <BarList title={t('dbx.biggest')} items={biggest.map((table) => ({ name: table.name, value: table.size ?? table.rows, label: table.size !== null ? formatBytes(table.size) : `${table.rows.toLocaleString(language)} ${t('dbx.rows')}` }))} max={maxSize} onSelect={onSelect} tone="bg-foreground/60" />
         <BarList title={t('dbx.mostChanged')} items={changed.map((table) => ({ name: table.name, value: table.changes_7d, label: String(table.changes_7d) }))} max={maxChanges} onSelect={onSelect} tone="bg-success" />
       </div>
       <Card>
@@ -199,7 +199,7 @@ function RowsView({ table }: { table: DbTable }) {
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-col gap-2 border-b p-3 md:flex-row md:items-center">
+      <div className="flex flex-col gap-2 p-3 md:flex-row md:items-center">
         <SearchInput value={search} onChange={(value) => { setSearch(value); setPage(0); }} placeholder={t('dbx.searchRows')} className="md:w-72" />
         <Select value={filterColumn} onValueChange={(value) => { setFilterColumn(value); setPage(0); }}>
           <SelectTrigger className="md:w-48" aria-label={t('dbx.filterColumn')}><SelectValue /></SelectTrigger>
@@ -258,7 +258,7 @@ function RowsView({ table }: { table: DbTable }) {
 function Cell({ value, language }: { value: unknown; language: 'de' | 'en' }) {
   if (value === null || value === undefined) return <span className="text-muted-foreground/60">NULL</span>;
   if (typeof value === 'boolean') return <span className={value ? 'text-success' : 'text-muted-foreground'}>{String(value)}</span>;
-  if (typeof value === 'number') return <span className="tabular-nums text-info">{value.toLocaleString(language)}</span>;
+  if (typeof value === 'number') return <span className="tabular-nums">{value.toLocaleString(language)}</span>;
   return <span title={String(value)}>{String(value)}</span>;
 }
 
@@ -280,7 +280,7 @@ function ColumnsView({ table }: { table: DbTable }) {
             <TableRow key={column.name}>
               <TableCell className="font-mono text-sm">
                 <span className="inline-flex items-center gap-1.5">
-                  {column.primary_key ? <KeyRound className="h-3.5 w-3.5 text-warning" /> : column.foreign_key ? <Link2 className="h-3.5 w-3.5 text-info" /> : <span className="w-3.5" />}
+                  {column.primary_key ? <KeyRound className="h-3.5 w-3.5 text-warning" /> : column.foreign_key ? <Link2 className="h-3.5 w-3.5 text-muted-foreground" /> : <span className="w-3.5" />}
                   {column.name}
                 </span>
               </TableCell>
@@ -321,8 +321,8 @@ function RelationsView({ table, schema, onSelect }: { table: DbTable; schema: Db
           <CardContent className="space-y-2">
             {outgoing.length === 0 && <p className="text-sm text-muted-foreground">{t('dbx.noRelations')}</p>}
             {outgoing.map((fk) => (
-              <button key={fk.column} type="button" onClick={() => onSelect(fk.references_table)} className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-accent">
-                <span>{table.name}.{fk.column}</span><span className="text-muted-foreground">→</span><span className="text-info">{fk.references_table}.{fk.references_column}</span>
+              <button key={fk.column} type="button" onClick={() => onSelect(fk.references_table)} className="flex w-full items-center gap-2 rounded-full bg-muted px-3.5 py-1.5 text-left font-mono text-xs transition-colors duration-300 hover:bg-accent">
+                <span>{table.name}.{fk.column}</span><span className="text-muted-foreground">→</span><span className="font-semibold">{fk.references_table}.{fk.references_column}</span>
               </button>
             ))}
           </CardContent>
@@ -332,8 +332,8 @@ function RelationsView({ table, schema, onSelect }: { table: DbTable; schema: Db
           <CardContent className="space-y-2">
             {referenced.length === 0 && <p className="text-sm text-muted-foreground">{t('dbx.noRelations')}</p>}
             {referenced.map((fk) => (
-              <button key={`${fk.table}.${fk.column}`} type="button" onClick={() => onSelect(fk.table)} className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left font-mono text-sm transition-colors hover:bg-accent">
-                <span className="text-info">{fk.table}.{fk.column}</span><span className="text-muted-foreground">→</span><span>{table.name}.{fk.references_column}</span>
+              <button key={`${fk.table}.${fk.column}`} type="button" onClick={() => onSelect(fk.table)} className="flex w-full items-center gap-2 rounded-full bg-muted px-3.5 py-1.5 text-left font-mono text-xs transition-colors duration-300 hover:bg-accent">
+                <span className="font-semibold">{fk.table}.{fk.column}</span><span className="text-muted-foreground">→</span><span>{table.name}.{fk.references_column}</span>
               </button>
             ))}
           </CardContent>

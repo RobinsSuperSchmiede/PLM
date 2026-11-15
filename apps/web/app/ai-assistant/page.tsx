@@ -50,7 +50,7 @@ export default function AssistantPage() {
       />
 
       {!settings.mcp_enabled && (
-        <div role="alert" className="mb-6 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm">{t('assistant.disabled')}</div>
+        <div role="alert" className="mb-6 rounded-[18px] bg-warning/10 px-[18px] py-3.5 text-[13px]">{t('assistant.disabled')}</div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -87,7 +87,7 @@ export default function AssistantPage() {
               </TabsList>
               {(Object.keys(snippets) as (keyof typeof snippets)[]).map((key) => (
                 <TabsContent key={key} value={key} className="relative">
-                  <pre className="max-h-64 overflow-auto rounded-lg bg-muted p-4 pr-12 font-mono text-xs leading-relaxed">{snippets[key]}</pre>
+                  <pre className="max-h-64 overflow-auto rounded-xl bg-muted p-3.5 pr-12 font-mono text-xs leading-relaxed">{snippets[key]}</pre>
                   <CopyButton value={snippets[key]} className="absolute right-2 top-2" />
                 </TabsContent>
               ))}
@@ -103,7 +103,7 @@ export default function AssistantPage() {
         </CardHeader>
         <CardContent className="stagger grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {tools.map((tool) => (
-            <div key={tool.name} className="rounded-lg border p-3 transition-colors hover:border-foreground/15 hover:bg-muted/40">
+            <div key={tool.name} className="rounded-xl bg-muted p-3.5 transition-colors duration-300 hover:bg-accent">
               <p className="font-mono text-xs font-medium">{tool.name}</p>
               {tool.description && <p className="mt-1 text-xs text-muted-foreground">{tool.description}</p>}
             </div>

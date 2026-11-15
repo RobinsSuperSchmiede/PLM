@@ -283,7 +283,7 @@ export default function GraphPage() {
                 const active = types.includes(type);
                 return (
                   <button key={type} type="button" aria-pressed={active} onClick={() => setTypes(active ? types.filter((entry) => entry !== type) : [...types, type])}
-                    className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-sm transition-[background-color,border-color,color,transform] duration-200', active ? 'border-border bg-accent text-foreground' : 'border-transparent text-muted-foreground opacity-60 hover:opacity-100')}>
+                    className={cn('flex h-[26px] items-center gap-2 rounded-full px-2.5 text-left text-[13px] transition-[background-color,box-shadow,color,opacity] duration-300 ease-ds', active ? 'ds-glass text-foreground' : 'text-muted-foreground opacity-60 hover:opacity-100')}>
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: entityColors[type] }} />
                     <Icon className="h-3.5 w-3.5" />
                     <span className="flex-1">{t(entityLabelKeys[type])}</span>
@@ -377,7 +377,7 @@ export default function GraphPage() {
             </g>
           </svg>
 
-          <div className="absolute bottom-3 left-3 flex gap-1 rounded-lg border bg-background/80 p-1 backdrop-blur">
+          <div className="ds-glass ds-float absolute bottom-3 left-3 flex gap-0.5 rounded-full p-[3px]">
             <Button variant="ghost" size="icon-sm" onClick={() => setView((current) => ({ ...current, k: Math.min(4, current.k * 1.25) }))} aria-label={t('graph.zoomIn')}><Plus /></Button>
             <Button variant="ghost" size="icon-sm" onClick={() => setView((current) => ({ ...current, k: Math.max(0.2, current.k / 1.25) }))} aria-label={t('graph.zoomOut')}><Minus /></Button>
             <Button variant="ghost" size="icon-sm" aria-label={t('graph.reset')} onClick={() => {
@@ -388,9 +388,9 @@ export default function GraphPage() {
           </div>
 
           {matches && matches.size > 0 && !selected && (
-            <div className="absolute left-3 top-3 max-h-60 w-64 overflow-y-auto rounded-lg ds-menu p-1">
+            <div className="ds-menu absolute left-3 top-3 max-h-60 w-64 overflow-y-auto rounded-[18px] p-1.5">
               {nodes.filter((node) => matches.has(node.id)).slice(0, 12).map((node) => (
-                <button key={node.id} type="button" onClick={() => focusOn(node)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent">
+                <button key={node.id} type="button" onClick={() => focusOn(node)} className="flex w-full items-center gap-2 rounded-full px-2.5 py-1.5 text-left text-[13px] hover:bg-accent">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(node) }} /><span className="truncate">{node.label}</span>
                 </button>
               ))}
@@ -411,7 +411,7 @@ export default function GraphPage() {
               <ul className="mt-2 max-h-48 space-y-0.5 overflow-y-auto">
                 {selectedNeighbors.map((node) => (
                   <li key={node.id}>
-                    <button type="button" onClick={() => focusOn(node)} className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm hover:bg-accent">
+                    <button type="button" onClick={() => focusOn(node)} className="flex w-full items-center gap-2 rounded-full px-2 py-1 text-left text-[13px] hover:bg-accent">
                       {node.kind === 'tag' ? <Hash className="h-3 w-3 text-muted-foreground" /> : <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color(node) }} />}
                       <span className="truncate">{node.label}</span>
                     </button>

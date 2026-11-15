@@ -2,72 +2,32 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-  Archive, BellRing, BookOpen, Bot, CalendarDays, CheckSquare2, Code2, Database, FileText, Folder, FolderKanban, Hash, Home, Image as ImageIcon, LifeBuoy, Lightbulb, ListTodo, type LucideIcon, Menu, Network, NotebookPen, PanelLeftClose, PanelLeftOpen, Paperclip, Search, Send, Settings, Users,
-} from 'lucide-react';
+import { CalendarDays, CheckSquare2, ChevronRight, FolderTree, Home, type LucideIcon, Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
+import { AmbientBackground } from '@/components/ambient-background';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TelegramMenu } from '@/components/quick-capture';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
+import { type NavItem as PageItem, type ResolvedNavItem, navItems, resolveNav, useSidebarPrefs } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 type NavItem = { key: TranslationKey; href: string; icon: LucideIcon };
 
-const navGroups: { key: TranslationKey | null; items: NavItem[] }[] = [
-  { key: null, items: [{ key: 'nav.dashboard', href: '/', icon: Home }] },
-  {
-    key: 'nav.groupPlan',
-    items: [
-      { key: 'nav.projects', href: '/projects', icon: FolderKanban },
-      { key: 'nav.tasks', href: '/tasks', icon: CheckSquare2 },
-      { key: 'nav.calendar', href: '/calendar', icon: CalendarDays },
-      { key: 'nav.reminders', href: '/reminders', icon: BellRing },
-      { key: 'nav.meetings', href: '/meetings', icon: Users },
-    ],
-  },
-  {
-    key: 'nav.groupKnowledge',
-    items: [
-      { key: 'nav.notes', href: '/notes', icon: NotebookPen },
-      { key: 'nav.knowledge', href: '/knowledge', icon: BookOpen },
-      { key: 'nav.graph', href: '/graph', icon: Network },
-      { key: 'nav.tags', href: '/tags', icon: Hash },
-      { key: 'nav.files', href: '/files', icon: Paperclip },
-      { key: 'nav.images', href: '/images', icon: ImageIcon },
-      { key: 'nav.lists', href: '/lists', icon: ListTodo },
-      { key: 'nav.ideas', href: '/ideas', icon: Lightbulb },
-    ],
-  },
-  {
-    key: 'nav.groupSystem',
-    items: [
-      { key: 'nav.archive', href: '/archive', icon: Archive },
-      { key: 'nav.database', href: '/database', icon: Database },
-      { key: 'nav.telegram', href: '/telegram', icon: Send },
-      { key: 'nav.assistant', href: '/ai-assistant', icon: Bot },
-      { key: 'nav.developer', href: '/developer-center', icon: Code2 },
-    ],
-  },
-];
-
-const bottomItems: NavItem[] = [{ key: 'nav.docs', href: '/docs', icon: LifeBuoy }, { key: 'nav.settings', href: '/settings', icon: Settings }];
-const allNavItems = [...navGroups.flatMap((group) => group.items), ...bottomItems];
-
 /** Thumb-reachable navigation on phones; "Menu" opens the full sidebar as a drawer. */
 const mobileNav: NavItem[] = [
   { key: 'nav.dashboard', href: '/', icon: Home },
-  { key: 'nav.notes', href: '/notes', icon: NotebookPen },
+  { key: 'nav.explorer', href: '/explorer', icon: FolderTree },
   { key: 'nav.tasks', href: '/tasks', icon: CheckSquare2 },
   { key: 'nav.calendar', href: '/calendar', icon: CalendarDays },
   { key: 'nav.menu', href: '#menu', icon: Menu },
 ];
 /** Pages that lay out their own explorer + content panes edge to edge (no page padding). */
-const fullBleed = ['/notes', '/files', '/images', '/docs', '/database'];
+const fullBleed = ['/explorer', '/docs', '/database'];
 
 const isActive = (pathname: string, href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
@@ -91,6 +51,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [paletteUsed, setPaletteUsed] = useState(false);
   const [modifier, setModifier] = useState('Ctrl');
   const hoverTimer = useRef<number | undefined>(undefined);
+  const [sidebarPrefs] = useSidebarPrefs();
+  const groups = useMemo(() => resolveNav(sidebarPrefs), [sidebarPrefs]);
+  // Sub-pages the user unfolded by hand; the family of the current page is always unfolded.
+  const [unfolded, setUnfolded] = useState<string[]>([]);
 
   useEffect(() => {
     setModifier(/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl');
@@ -113,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (process.env.NODE_ENV !== 'development') return;
     let cancelled = false;
     const timer = window.setTimeout(async () => {
-      for (const item of allNavItems) {
+      for (const item of navItems) {
         if (cancelled) return;
         if (item.href === pathname) continue;
         await fetch(item.href, { cache: 'no-store' }).catch(() => undefined);
@@ -143,33 +107,59 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const openTasks = data.tasks.filter((task) => task.status !== 'done').length;
   const expanded = pinned || hovered;
 
+  /** A page with its sub-pages: folded into one icon on the closed rail, a small tree in the open panel. */
+  const family = (item: ResolvedNavItem, open: boolean) => {
+    const childActive = item.children.some((child) => isActive(activePath, child.href));
+    const showChildren = open && item.children.length > 0 && (childActive || unfolded.includes(item.id));
+    const hasBadge = item.id === 'tasks' && openTasks > 0;
+    const link = (entry: PageItem, nested: boolean) => (
+      <RailLink key={entry.id} item={entry} label={t(entry.key)} open={open} nested={nested} onNavigate={setPendingHref} onIntent={router.prefetch}
+        active={isActive(activePath, entry.href) || (!nested && !open && childActive)}
+        badge={entry.id === 'tasks' && openTasks > 0 ? openTasks : undefined} />
+    );
+    if (!item.children.length) return link(item, false);
+    return (
+      <Fragment key={item.id}>
+        <div className="relative">
+          {link(item, false)}
+          {open && (
+            <button type="button" aria-expanded={showChildren} aria-label={`${t('sidebar.subpages')}: ${t(item.key)}`}
+              onClick={() => setUnfolded((list) => (list.includes(item.id) ? list.filter((id) => id !== item.id) : [...list, item.id]))}
+              className={cn('absolute top-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors duration-300 hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring', hasBadge ? 'right-8' : 'right-1')}>
+              <ChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-300 ease-ds', showChildren && 'rotate-90')} strokeWidth={1.6} />
+            </button>
+          )}
+        </div>
+        {showChildren && item.children.map((child) => link(child, true))}
+      </Fragment>
+    );
+  };
+
   const navList = (open: boolean, withPin: boolean) => (
     <div className="flex min-h-full flex-col gap-2">
       {withPin && (
         <RailButton open={open} label={pinned ? t('shell.collapse') : t('shell.expand')} icon={pinned ? PanelLeftClose : PanelLeftOpen}
           onClick={togglePinned} pressed={pinned} />
       )}
-      {navGroups.map((group, index) => (
-        <div key={group.key ?? index} className="flex flex-col gap-[2px]">
-          {group.key && (
-            <p className={cn('ds-label overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity] duration-500 ease-ds', open ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0')} aria-hidden={!open}>
-              {t(group.key)}
-            </p>
-          )}
-          {group.items.map((item) => (
-            <RailLink key={item.href} item={item} label={t(item.key)} active={isActive(activePath, item.href)} open={open} onNavigate={setPendingHref} onIntent={router.prefetch}
-              badge={item.href === '/tasks' && openTasks > 0 ? openTasks : undefined} />
-          ))}
-        </div>
-      ))}
-      <div className="mt-auto flex flex-col gap-[2px] pt-2">
-        {bottomItems.map((item) => <RailLink key={item.href} item={item} label={t(item.key)} active={isActive(activePath, item.href)} open={open} onNavigate={setPendingHref} onIntent={router.prefetch} />)}
-      </div>
+      {groups.map((group) => {
+        const list = group.items.map((item) => family(item, open));
+        return group.id === 'bottom' ? <div key={group.id} className="mt-auto flex flex-col gap-[2px] pt-2">{list}</div> : (
+          <div key={group.id} className="flex flex-col gap-[2px]">
+            {group.key && (
+              <p className={cn('ds-label overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity] duration-500 ease-ds', open ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0')} aria-hidden={!open}>
+                {t(group.key)}
+              </p>
+            )}
+            {list}
+          </div>
+        );
+      })}
     </div>
   );
 
   return (
     <div className="min-h-screen">
+      <AmbientBackground />
       {/* Brand: plain text, always top left – also inside the opened navigation panel. */}
       <Link href="/" className="fixed left-4 top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
         <BrandWord />
@@ -243,7 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
 
-      {paletteUsed && <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={allNavItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />}
+      {paletteUsed && <GlobalSearch open={paletteOpen} onOpenChange={setPaletteOpen} pages={navItems.map((item) => ({ href: item.href, label: t(item.key), icon: item.icon }))} />}
     </div>
   );
 }
@@ -263,12 +253,12 @@ function RailLabel({ open, children }: { open: boolean; children: React.ReactNod
   return <span className={cn('flex-1 truncate whitespace-nowrap text-left transition-opacity duration-500 ease-ds', open ? 'opacity-100 delay-100' : 'opacity-0')}>{children}</span>;
 }
 
-function RailLink({ item, label, active, open, badge, onNavigate, onIntent }: {
-  item: NavItem; label: string; active: boolean; open: boolean; badge?: number;
+function RailLink({ item, label, active, open, badge, nested, onNavigate, onIntent }: {
+  item: NavItem; label: string; active: boolean; open: boolean; badge?: number; nested?: boolean;
   onNavigate?: (href: string) => void; onIntent?: (href: string) => void;
 }) {
   return (
-    <Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={open ? undefined : label} className={railItemClass(open, active)}
+    <Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={open ? undefined : label} className={cn(railItemClass(open, active), nested && 'ml-[18px] w-[calc(100%-18px)] duration-300 animate-in fade-in slide-in-from-top-1')}
       onMouseEnter={() => onIntent?.(item.href)} onFocus={() => onIntent?.(item.href)}
       onClick={(event) => { if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) onNavigate?.(item.href); }}>
       <item.icon className={cn('h-4 w-4 shrink-0', open && active && 'text-brand')} style={{ width: 16, height: 16 }} strokeWidth={1.6} />

@@ -18,17 +18,18 @@ const detailPages: Record<string, { type: EntityType; section: TranslationKey; p
   '/tasks': { type: 'task', section: 'nav.tasks', projectTab: 'tasks' },
   '/meetings': { type: 'meeting', section: 'nav.meetings', projectTab: 'schedule' },
   '/calendar': { type: 'event', section: 'nav.calendar', projectTab: 'schedule' },
-  '/knowledge': { type: 'knowledge', section: 'nav.knowledge', projectTab: 'documents' },
   '/ideas': { type: 'idea', section: 'nav.ideas', projectTab: 'overview' },
 };
 
 const sections: Record<string, TranslationKey> = {
   '/projects': 'nav.projects', '/tasks': 'nav.tasks', '/calendar': 'nav.calendar', '/reminders': 'nav.reminders',
-  '/meetings': 'nav.meetings', '/notes': 'nav.notes', '/lists': 'nav.lists', '/ideas': 'nav.ideas',
-  '/knowledge': 'nav.knowledge', '/graph': 'nav.graph', '/tags': 'nav.tags', '/archive': 'nav.archive',
+  '/meetings': 'nav.meetings', '/lists': 'nav.lists', '/ideas': 'nav.ideas',
+  '/graph': 'nav.graph', '/tags': 'nav.tags', '/archive': 'nav.archive',
   '/database': 'nav.database', '/telegram': 'nav.telegram', '/ai-assistant': 'nav.assistant',
-  '/developer-center': 'nav.developer', '/settings': 'nav.settings', '/files': 'nav.files', '/images': 'nav.images', '/docs': 'nav.docs',
+  '/developer-center': 'nav.developer', '/settings': 'nav.settings', '/docs': 'nav.docs',
 };
+
+const explorerViews: Record<string, TranslationKey> = { notes: 'nav.notes', docs: 'nav.knowledge', files: 'nav.files', images: 'nav.images' };
 
 const projectTabs: Record<string, TranslationKey> = {
   tasks: 'projectHub.tasks', notes: 'projectHub.notes', schedule: 'projectHub.schedule', documents: 'projectHub.documents',
@@ -69,12 +70,20 @@ export function Breadcrumbs() {
     crumbs.push({ label: t('nav.projects'), href: '/projects' }, { label: project?.name ?? '…', href: pathname });
     const tab = params.get('tab');
     if (tab && projectTabs[tab]) crumbs.push({ label: t(projectTabs[tab]) });
-  } else if (base === '/notes') {
-    crumbs.push({ label: t('nav.notes'), href: '/notes' });
+  } else if (base === '/explorer') {
+    crumbs.push({ label: t('nav.explorer'), href: '/explorer' });
     const note = id ? data.notes.find((item) => item.id === id) : undefined;
     const folderId = note ? note.folder_id : params.get('folder');
-    for (const folder of folderPath(data.folders, folderId)) crumbs.push({ label: folder.name, href: `/notes?folder=${folder.id}` });
-    if (note) crumbs.push({ label: note.title || untitled });
+    const view = params.get('view');
+    if (note || folderId) {
+      crumbs.push({ label: t('nav.notes'), href: '/explorer?view=notes' });
+      for (const folder of folderPath(data.folders, folderId)) crumbs.push({ label: folder.name, href: `/explorer?folder=${folder.id}` });
+      if (note) crumbs.push({ label: note.title || untitled });
+    } else if (view && explorerViews[view]) {
+      crumbs.push({ label: t(explorerViews[view]), href: `/explorer?view=${view}` });
+      const entry = id ? (view === 'docs' ? data.knowledge.find((item) => item.id === id)?.title : data.files.find((item) => item.id === id)?.name) : undefined;
+      if (entry) crumbs.push({ label: entry });
+    }
   } else if (base === '/tags') {
     crumbs.push({ label: t('nav.tags'), href: '/tags' });
     const name = pathname.split('/')[2];

@@ -160,7 +160,7 @@ export function TelegramSettings() {
                 <div className="space-y-1.5">
                   <p className="text-xs text-muted-foreground">{t('settings.orSend', { bot: telegram.bot_username ?? '' })}</p>
                   <div className="flex items-center gap-2">
-                    <code className="truncate rounded-md bg-muted px-3 py-1.5 font-mono text-xs">/start {telegram.link_code}</code>
+                    <code className="truncate rounded-full bg-muted px-3 py-1.5 font-mono text-xs">/start {telegram.link_code}</code>
                     <CopyButton value={`/start ${telegram.link_code}`} />
                   </div>
                 </div>
@@ -189,8 +189,8 @@ function Step({ number, title, done, disabled, last, children }: {
       {!last && <span className="absolute left-[13px] top-8 h-[calc(100%-1rem)] w-px bg-border" aria-hidden="true" />}
       <span
         className={cn(
-          'relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors duration-300',
-          done ? 'border-success bg-success text-white' : 'bg-background',
+          'relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300',
+          done ? 'bg-success text-white' : 'ds-glass',
         )}
       >
         {done ? <CheckCircle2 className="h-4 w-4 duration-300 animate-in zoom-in-50" /> : number}
