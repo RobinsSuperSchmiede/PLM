@@ -1,4 +1,5 @@
 import { deExtra, enExtra } from '@/lib/i18n-extra';
+import type { Language } from '@/lib/types';
 
 const deBase = {
   common: {
@@ -91,14 +92,26 @@ const deBase = {
     serverOffline: 'Server nicht erreichbar',
   },
   access: {
-    title: 'Zugangscode',
-    description: 'Gib deinen sechsstelligen Code ein, um den Workspace zu öffnen',
-    submit: 'Entsperren',
-    invalidFormat: 'Bitte gib einen sechsstelligen Zugangscode ein',
-    wrong: 'Der Zugangscode ist nicht korrekt',
-    notConfigured: 'Der Zugangscode ist nicht konfiguriert (APP_ACCESS_CODE)',
-    failed: 'Der Zugang konnte nicht überprüft werden. Bitte versuche es erneut.',
-    checking: 'Wird überprüft …',
+    signInTitle: 'Anmelden',
+    signInDescription: 'Melde dich mit deinem Benutzernamen und Passwort an',
+    username: 'Benutzername',
+    password: 'Passwort',
+    passwordRepeat: 'Passwort wiederholen',
+    displayName: 'Anzeigename',
+    signIn: 'Anmelden',
+    signingIn: 'Wird angemeldet …',
+    showPassword: 'Passwort anzeigen',
+    hidePassword: 'Passwort verbergen',
+    wrong: 'Benutzername oder Passwort ist falsch',
+    tooManyAttempts: 'Zu viele Fehlversuche. Bitte warte ein paar Minuten.',
+    failed: 'Die Anmeldung ist fehlgeschlagen. Bitte versuche es erneut.',
+    unreachable: 'Der API-Server ist nicht erreichbar',
+    setupTitle: 'Admin-Konto einrichten',
+    setupDescription: 'Es gibt noch kein Konto. Das erste Konto wird Admin und übernimmt den bestehenden Workspace.',
+    setupSubmit: 'Konto erstellen',
+    usernameRules: '2–32 Zeichen: Buchstaben, Ziffern, Punkt, Binde- und Unterstrich',
+    passwordTooShort: 'Das Passwort braucht mindestens 8 Zeichen',
+    passwordMismatch: 'Die Passwörter stimmen nicht überein',
   },
   dashboard: {
     morning: 'Guten Morgen',
@@ -376,8 +389,6 @@ const deBase = {
     appearanceDesc: 'Wähle zwischen hellem, dunklem oder System-Design',
     language: 'Sprache',
     languageDesc: 'Sprache der Benutzeroberfläche',
-    german: 'Deutsch',
-    english: 'English',
     domainTitle: 'Eigene Domain',
     domainDesc: 'Läuft Anamnesies lokal, kannst du es über eine eigene Domain erreichbar machen – z. B. per Reverse-Proxy (Caddy, nginx) oder Tunnel (Cloudflare Tunnel) auf Port 3000.',
     customDomain: 'Domain',
@@ -417,16 +428,13 @@ const deBase = {
     testTo: 'Empfänger',
     sendTest: 'Test senden',
     testSent: 'Test-E-Mail wurde versendet',
-    lockTitle: 'Workspace sperren',
-    lockDesc: 'Meldet diesen Browser ab. Danach ist der Zugangscode wieder erforderlich.',
-    lock: 'Jetzt sperren',
     exposureTitle: 'Was ist von außen erreichbar?',
-    exposureDesc: 'Über die eigene Domain sind nur die Weboberfläche (mit Zugangscode) und /mcp (mit Token) erreichbar. Die REST-API auf Port 8000 akzeptiert nur lokale Anfragen.',
+    exposureDesc: 'Über die eigene Domain sind nur die Weboberfläche (mit Anmeldung) und /mcp (mit Token) erreichbar. Die REST-API auf Port 8000 akzeptiert nur lokale Anfragen.',
   },
 };
 
 const de = { ...deBase, ...deExtra };
-type Dictionary = typeof de;
+export type Dictionary = typeof de;
 
 const enBase: Omit<Dictionary, keyof typeof deExtra> = {
   common: {
@@ -519,14 +527,26 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
     serverOffline: 'Server unreachable',
   },
   access: {
-    title: 'Access code',
-    description: 'Enter your six-digit code to open the workspace',
-    submit: 'Unlock',
-    invalidFormat: 'Please enter a six-digit access code',
-    wrong: 'The access code is incorrect',
-    notConfigured: 'The access code is not configured (APP_ACCESS_CODE)',
-    failed: 'Access could not be verified. Please try again.',
-    checking: 'Checking …',
+    signInTitle: 'Sign in',
+    signInDescription: 'Sign in with your username and password',
+    username: 'Username',
+    password: 'Password',
+    passwordRepeat: 'Repeat password',
+    displayName: 'Display name',
+    signIn: 'Sign in',
+    signingIn: 'Signing in …',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    wrong: 'Wrong username or password',
+    tooManyAttempts: 'Too many failed attempts. Please wait a few minutes.',
+    failed: 'Sign-in failed. Please try again.',
+    unreachable: 'The API server is not reachable',
+    setupTitle: 'Set up the admin account',
+    setupDescription: 'There is no account yet. The first account becomes admin and takes over the existing workspace.',
+    setupSubmit: 'Create account',
+    usernameRules: '2–32 characters: letters, digits, dot, dash and underscore',
+    passwordTooShort: 'The password needs at least 8 characters',
+    passwordMismatch: 'The passwords do not match',
   },
   dashboard: {
     morning: 'Good morning',
@@ -804,8 +824,6 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
     appearanceDesc: 'Choose a light, dark or system theme',
     language: 'Language',
     languageDesc: 'Language of the user interface',
-    german: 'Deutsch',
-    english: 'English',
     domainTitle: 'Custom domain',
     domainDesc: 'When Anamnesies runs locally you can make it reachable via your own domain – e.g. with a reverse proxy (Caddy, nginx) or a tunnel (Cloudflare Tunnel) to port 3000.',
     customDomain: 'Domain',
@@ -845,17 +863,30 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
     testTo: 'Recipient',
     sendTest: 'Send test',
     testSent: 'Test email sent',
-    lockTitle: 'Lock workspace',
-    lockDesc: 'Signs this browser out. The access code is required again afterwards.',
-    lock: 'Lock now',
     exposureTitle: 'What is reachable from outside?',
-    exposureDesc: 'Through your domain only the web UI (with access code) and /mcp (with token) are reachable. The REST API on port 8000 only accepts local requests.',
+    exposureDesc: 'Through your domain only the web UI (with sign-in) and /mcp (with token) are reachable. The REST API on port 8000 only accepts local requests.',
   },
 };
 
 const en: Dictionary = { ...enBase, ...enExtra };
 
-export const dictionaries = { de, en } as const;
+/** German and English ship with the app; the other languages are loaded when they are chosen. */
+export const dictionaries: Partial<Record<Language, Dictionary>> = { de, en };
+
+const loaders: Record<Exclude<Language, 'de' | 'en'>, () => Promise<Dictionary>> = {
+  zh: () => import('@/lib/locales/zh').then((module) => module.zh),
+  es: () => import('@/lib/locales/es').then((module) => module.es),
+  pt: () => import('@/lib/locales/pt').then((module) => module.pt),
+  ja: () => import('@/lib/locales/ja').then((module) => module.ja),
+};
+
+export async function loadDictionary(language: Language): Promise<Dictionary> {
+  const loaded = dictionaries[language];
+  if (loaded) return loaded;
+  const dictionary = await loaders[language as keyof typeof loaders]();
+  dictionaries[language] = dictionary;
+  return dictionary;
+}
 
 type Join<K, P> = K extends string ? (P extends string ? `${K}.${P}` : never) : never;
 type Paths<T> = { [K in keyof T]: T[K] extends string ? K : Join<K, Paths<T[K]>> }[keyof T];

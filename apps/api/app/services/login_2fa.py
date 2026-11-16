@@ -52,7 +52,7 @@ def create_challenge(db: Session) -> LoginChallenge:
     challenge.code_hash = _hash(challenge.id, code)
     db.add(challenge)
     db.commit()
-    language = "en" if get_app_settings(db).language == "en" else "de"
+    language = "de" if get_app_settings(db).language == "de" else "en"
     try:
         # Sent without the message log: the code must not be stored anywhere in plain text.
         telegram.send_message(row.bot_token or "", row.chat_id or "", TEXTS[language].format(code=code))

@@ -14,11 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Segmented } from '@/components/ui/segmented';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CopyButton } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import { api, ApiError } from '@/lib/api';
 import { type Accent, type Ambient, type Appearance, accents, ambients, defaultAppearance, loadAppearance, saveAppearance } from '@/lib/appearance';
+import { languages } from '@/lib/languages';
 import { type McpClient, mcpSnippets } from '@/lib/mcp';
 import type { Language, TelegramSettings, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -133,8 +135,12 @@ function WelcomeStep() {
       </div>
       <div className="mt-8 flex items-center gap-3 text-sm text-muted-foreground">
         <span>{t('settings.language')}</span>
-        <Segmented value={language} label={t('settings.language')} options={[{ value: 'de', label: 'Deutsch' }, { value: 'en', label: 'English' }]}
-          onChange={(value: Language) => { setLanguage(value); void saveSettings({ language: value }); }} />
+        <Select value={language} onValueChange={(value) => { setLanguage(value as Language); void saveSettings({ language: value as Language }); }}>
+          <SelectTrigger className="w-48" aria-label={t('settings.language')}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {languages.map((entry) => <SelectItem key={entry.code} value={entry.code} lang={entry.code}>{entry.flag} {entry.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

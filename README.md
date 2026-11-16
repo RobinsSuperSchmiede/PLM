@@ -57,14 +57,22 @@ events, meetings, archive entries, Telegram history, activity and API statistics
 python -m scripts.seed_demo
 ```
 
-It adds to the database in `DATABASE_URL` and keeps existing entries; `--scale 0.5` or `--scale 2` changes the amount.
+It adds to the database in `DATABASE_URL` (or with `--user <name>` to that account's workspace) and keeps existing entries; `--scale 0.5` or `--scale 2` changes the amount.
 Demo data never sends Telegram messages: its reminders are already done and its upcoming events are marked as announced.
 
 ## Features
 
-- Next.js dashboard built with shadcn/ui, light/dark/system theme and German/English UI (Settings → General).
+- Next.js dashboard built with shadcn/ui, light/dark/system theme and UI in German, English, Spanish, Portuguese (Brazil), Chinese (Simplified) and Japanese (Settings → General). German and English ship with the app, the other language packs load when chosen.
 - Every area (projects, tasks, calendar, meetings, notes, lists, ideas, knowledge, records) is stored in the database via the FastAPI REST API. Tables are created on API startup.
-- The browser talks only to the web app: `/api/v1/*` is proxied to the API after the access code (`APP_ACCESS_CODE`) was entered.
+- The browser talks only to the web app: `/api/v1/*` is proxied to the API with the session token of the signed-in account.
+
+## Accounts and sign-in
+
+- `AUTH_MODE=multi` (default): sign-in with username and password. On the first start the web app asks you to create the admin account; it takes over the existing data (the database from `DATABASE_URL`).
+- Admins create further accounts under Settings → Users. Every account has a **separate workspace**: its own SQLite file (or PostgreSQL schema `ws_<id>`) and upload folder in `WORKSPACES_DIR`, its own settings, Telegram bot and MCP token. The MCP token also selects the workspace.
+- Sign-in returns an access token kept in an httpOnly cookie; only its SHA-256 is stored. Sessions expire after `SESSION_DAYS` without use and can be signed out individually under Settings → Account. Passwords are hashed with scrypt; failed sign-ins are throttled. Telegram two-factor sign-in works per account.
+- `AUTH_MODE=single`: no accounts and no sign-in, one local workspace – only for machines nobody else can reach.
+- Lost the admin password? From `apps/api`: `python -m scripts.users password <username>` (also `list`, `create <name> [--admin]`, `enable`, `disable`).
 - MCP server (Streamable HTTP) at `/mcp` with tools for all workspace areas plus `send_email`. Connection snippets for Claude Code / Claude Desktop are on the "MCP & AI" page.
 
 ## Custom domain (local install)

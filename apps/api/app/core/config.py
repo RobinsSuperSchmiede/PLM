@@ -1,8 +1,12 @@
 from functools import lru_cache
-from typing import Sequence
+from pathlib import Path
+from typing import Literal, Sequence
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# apps/api – relative paths in the settings (uploads, workspaces) are resolved from here.
+API_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -26,6 +30,13 @@ class Settings(BaseSettings):
     # Uploaded files (images, PDFs, Office documents); relative paths are resolved from the API directory.
     upload_dir: str = "data/uploads"
     max_upload_mb: int = 25
+    # "multi": sign-in with username and password, every account has a workspace of its own.
+    # "single": no accounts and no sign-in, one local workspace (only for machines nobody else can reach).
+    auth_mode: Literal["single", "multi"] = "multi"
+    # Databases (SQLite) and uploads of the additional accounts' workspaces, plus the accounts store.
+    workspaces_dir: str = "data/workspaces"
+    # How long a sign-in stays valid without being used.
+    session_days: int = 30
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -104,11 +104,6 @@ def test_missing_columns_are_added(tmp_path) -> None:  # type: ignore[no-untyped
     engine = create_engine(f"sqlite:///{tmp_path / 'old.sqlite3'}")
     with engine.begin() as connection:
         connection.execute(text("CREATE TABLE notes (id CHAR(32) PRIMARY KEY, title VARCHAR(255) NOT NULL, content TEXT, created_at DATETIME, updated_at DATETIME)"))
-    original = db_session.engine
-    db_session.engine = engine
-    try:
-        db_session._add_missing_columns(Base.metadata)
-    finally:
-        db_session.engine = original
+    db_session._add_missing_columns(Base.metadata, engine)
     columns = {column["name"] for column in inspect(engine).get_columns("notes")}
     assert {"folder_id", "project_id", "pinned", "source", "archived_at"} <= columns

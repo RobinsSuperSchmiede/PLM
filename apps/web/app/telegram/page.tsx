@@ -119,7 +119,7 @@ export default function TelegramPage() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-1.5">
-                {commands.map((command) => <li key={command.en}><code className="rounded bg-muted px-1.5 py-0.5 text-xs">{command[language]}</code></li>)}
+                {commands.map((command) => <li key={command.en}><code className="rounded bg-muted px-1.5 py-0.5 text-xs">{command[language === 'de' ? 'de' : 'en']}</code></li>)}
               </ul>
             </CardContent>
           </Card>

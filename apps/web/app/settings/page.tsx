@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useEffect, useState } from 'react';
-import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, PlayCircle, RefreshCw, Send, ServerCog, Settings2, Sun, XCircle } from 'lucide-react';
+import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, PlayCircle, RefreshCw, Send, ServerCog, Settings2, Sun, UserRound, Users, XCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
+import { AccountSettings, UserManagement } from '@/components/account-settings';
 import { AppearanceSettings } from '@/components/appearance-settings';
+import { useAccount } from '@/components/auth-gate';
 import { SidebarSettings } from '@/components/sidebar-settings';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
@@ -21,11 +23,12 @@ import { TelegramSettings } from '@/components/telegram-settings';
 import { Field, PageHeader, PageSkeleton, TokenField, UrlRow } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
 import { api, ApiError, peek } from '@/lib/api';
+import { languages } from '@/lib/languages';
 import { openOnboarding } from '@/lib/onboarding';
 import type { AppSettings, DomainCheck, Language, SmtpSecurity, TelegramSettings as TelegramSettingsType, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const tabs = ['general', 'appearance', 'sidebar', 'domain', 'mcp', 'telegram', 'email', 'security'] as const;
+const tabs = ['general', 'account', 'users', 'appearance', 'sidebar', 'domain', 'mcp', 'telegram', 'email', 'security'] as const;
 
 export default function SettingsPage() {
   return <Suspense fallback={<PageSkeleton />}><SettingsView /></Suspense>;
@@ -34,9 +37,12 @@ export default function SettingsPage() {
 function SettingsView() {
   const { t } = useI18n();
   const { settings, loading } = useWorkspace();
+  const { mode, user } = useAccount();
   const router = useRouter();
   const requested = useSearchParams().get('tab');
-  const tab = tabs.find((value) => value === requested) ?? 'general';
+  // Account tabs exist only with accounts; the user list only for admins.
+  const visible = (value: (typeof tabs)[number]) => (value === 'account' ? mode === 'multi' : value === 'users' ? Boolean(user?.is_admin) : true);
+  const tab = tabs.find((value) => value === requested && visible(value)) ?? 'general';
 
   if (loading || !settings) return <PageSkeleton />;
 
@@ -46,6 +52,8 @@ function SettingsView() {
       <Tabs value={tab} onValueChange={(value) => router.replace(value === 'general' ? '/settings' : `/settings?tab=${value}`, { scroll: false })}>
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="general"><Settings2 />{t('settings.general')}</TabsTrigger>
+          {visible('account') && <TabsTrigger value="account"><UserRound />{t('account.title')}</TabsTrigger>}
+          {visible('users') && <TabsTrigger value="users"><Users />{t('account.usersTitle')}</TabsTrigger>}
           <TabsTrigger value="appearance"><Palette />{t('appearance.title')}</TabsTrigger>
           <TabsTrigger value="sidebar"><PanelLeft />{t('sidebar.title')}</TabsTrigger>
           <TabsTrigger value="domain"><Globe />{t('settings.domain')}</TabsTrigger>
@@ -55,6 +63,8 @@ function SettingsView() {
           <TabsTrigger value="security"><Lock />{t('settings.security')}</TabsTrigger>
         </TabsList>
         <TabsContent value="general"><GeneralSettings /></TabsContent>
+        {visible('account') && <TabsContent value="account"><AccountSettings /></TabsContent>}
+        {visible('users') && <TabsContent value="users"><UserManagement /></TabsContent>}
         <TabsContent value="appearance"><AppearanceSettings /></TabsContent>
         <TabsContent value="sidebar"><SidebarSettings /></TabsContent>
         <TabsContent value="domain"><DomainSettings settings={settings} /></TabsContent>
@@ -116,10 +126,9 @@ function GeneralSettings() {
         <div className="pt-5">
           <SettingRow title={t('settings.language')} description={t('settings.languageDesc')}>
             <Select value={language} onValueChange={(value) => { setLanguage(value as Language); void saveSettings({ language: value as Language }); }}>
-              <SelectTrigger className="w-44" aria-label={t('settings.language')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-48" aria-label={t('settings.language')}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="de">🇩🇪 {t('settings.german')}</SelectItem>
-                <SelectItem value="en">🇬🇧 {t('settings.english')}</SelectItem>
+                {languages.map((entry) => <SelectItem key={entry.code} value={entry.code} lang={entry.code}>{entry.flag} {entry.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </SettingRow>
@@ -394,15 +403,7 @@ function EmailSettings({ settings }: { settings: AppSettings }) {
 
 function SecuritySettings() {
   const { t } = useI18n();
-
-  async function lock() {
-    await fetch('/api/access-code', { method: 'DELETE' });
-    // Locking also drops the offline copy of the workspace from this browser.
-    try {
-      window.localStorage.removeItem('anamnesies.snapshot.v1');
-    } catch { /* storage unavailable */ }
-    window.location.href = '/';
-  }
+  const { mode } = useAccount();
 
   return (
     <div className="space-y-6">
@@ -412,14 +413,14 @@ function SecuritySettings() {
           <CardDescription>{t('settings.exposureDesc')}</CardDescription>
         </CardHeader>
       </Card>
-      <TwoFactorSetting />
-      <Card>
-        <CardContent className="p-5">
-          <SettingRow title={t('settings.lockTitle')} description={t('settings.lockDesc')}>
-            <Button variant="outline" onClick={() => void lock()}><Lock />{t('settings.lock')}</Button>
-          </SettingRow>
-        </CardContent>
-      </Card>
+      {mode === 'multi' ? <TwoFactorSetting /> : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base"><Lock className="h-4 w-4" />{t('account.singleTitle')}</CardTitle>
+            <CardDescription>{t('account.singleDesc')}</CardDescription>
+          </CardHeader>
+        </Card>
+      )}
     </div>
   );
 }

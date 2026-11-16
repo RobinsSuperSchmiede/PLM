@@ -33,22 +33,26 @@ const de: DocSection[] = [
     ],
   },
   {
-    id: 'setup', title: 'Einrichtung', summary: 'Installation, Start und Zugangscode.',
+    id: 'setup', title: 'Einrichtung', summary: 'Installation, Start, Konten und Anmeldung.',
     blocks: [
       { h: 'Voraussetzungen' },
       { list: ['Node.js 20+ und npm', 'Python 3.11+', 'Optional: Docker (für PostgreSQL)'] },
       { h: 'Starten' },
-      { steps: ['Abhängigkeiten installieren: npm install im Projektordner.', 'API einrichten: in apps/api eine virtuelle Umgebung anlegen und pip install -e . ausführen.', 'API starten (Port 8000) und danach die Weboberfläche (Port 3000).', 'Im Browser http://localhost:3000 öffnen und den Zugangscode eingeben.'] },
+      { steps: ['Abhängigkeiten installieren: npm install im Projektordner.', 'API einrichten: in apps/api eine virtuelle Umgebung anlegen und pip install -e . ausführen.', 'API starten (Port 8000) und danach die Weboberfläche (Port 3000).', 'Im Browser http://localhost:3000 öffnen. Beim ersten Start legst du das Admin-Konto an; es übernimmt den bestehenden Workspace.'] },
       { code: 'cd apps/api\nuvicorn app.main:app --host 0.0.0.0 --port 8000\n\ncd apps/web\nnpm run dev' },
       { h: 'Konfiguration' },
       { table: [
-        ['APP_ACCESS_CODE', 'Sechsstelliger Code für die Weboberfläche'],
+        ['AUTH_MODE', 'multi (Standard): Anmeldung mit Benutzername und Passwort, jedes Konto hat einen eigenen Workspace · single: ohne Konten, ein lokaler Workspace'],
+        ['WORKSPACES_DIR', 'Datenbanken und Dateien der weiteren Konten (Standard: apps/api/data/workspaces)'],
+        ['SESSION_DAYS', 'Wie lange eine Anmeldung ohne Nutzung gültig bleibt (Standard: 30)'],
         ['DATABASE_URL', 'z. B. sqlite:///./plm.sqlite3 – sonst PostgreSQL über POSTGRES_*'],
         ['UPLOAD_DIR', 'Speicherort für Dateien (Standard: apps/api/data/uploads)'],
         ['MAX_UPLOAD_MB', 'Maximale Dateigröße (Standard: 25)'],
         ['SCHEDULER_ENABLED', 'Hintergrunddienste für Erinnerungen und Telegram'],
       ] },
       { tip: 'Tabellen und neue Spalten werden beim Start der API automatisch angelegt – es sind keine Migrationen nötig.' },
+      { h: 'Konten' },
+      { list: ['Admins verwalten Konten unter Einstellungen › Benutzer: anlegen, Passwort zurücksetzen, deaktivieren, löschen.', 'Jedes Konto hat einen eigenen Workspace: Daten, Dateien, Einstellungen, Telegram-Bot und MCP-Token sind getrennt.', 'Unter Einstellungen › Konto änderst du dein Passwort und meldest einzelne Browser ab.', 'Passwort vergessen? Auf dem Server: python -m scripts.users password <name> (in apps/api).'] },
     ],
   },
   {
@@ -151,7 +155,7 @@ const de: DocSection[] = [
   {
     id: 'domain', title: 'Custom Domain & E-Mail', summary: 'Von außen erreichbar machen und Mails senden.',
     blocks: [
-      { list: ['Einstellungen › Domain: eigene Domain für Weboberfläche und MCP eintragen, z. B. über einen Reverse Proxy oder Tunnel.', 'Die Prüfung zeigt, ob die Domain auf diesen Rechner zeigt.', 'Von außen sind nur die Weboberfläche (mit Zugangscode) und /mcp (mit Token) erreichbar, die REST-API nur lokal.', 'Einstellungen › E-Mail: SMTP-Server eintragen, dann kann Anamnesies (und MCP) E-Mails versenden.'] },
+      { list: ['Einstellungen › Domain: eigene Domain für Weboberfläche und MCP eintragen, z. B. über einen Reverse Proxy oder Tunnel.', 'Die Prüfung zeigt, ob die Domain auf diesen Rechner zeigt.', 'Von außen sind nur die Weboberfläche (mit Anmeldung) und /mcp (mit Token) erreichbar, die REST-API nur lokal.', 'Einstellungen › E-Mail: SMTP-Server eintragen, dann kann Anamnesies (und MCP) E-Mails versenden.'] },
     ],
   },
   {
@@ -166,7 +170,7 @@ const de: DocSection[] = [
       { h: 'Tastenkürzel' },
       { table: [['Strg + K', 'Globale Suche'], ['Strg + Enter', 'Senden im Telegram-Menü'], ['Esc', 'Dialog, Vorschau oder Fokus-Modus schließen'], ['Mittelklick auf Tab', 'Notiz-Tab schließen']] },
       { h: 'Daten & Leistung' },
-      { list: ['Der Browser merkt sich eine Kopie des Workspaces, damit Seiten sofort erscheinen; „Workspace sperren“ löscht sie.', 'Lange Listen laden schrittweise beim Scrollen.', 'Alle Änderungen landen im Aktivitätsprotokoll (Quelle App, Telegram oder MCP).'] },
+      { list: ['Der Browser merkt sich eine Kopie des Workspaces, damit Seiten sofort erscheinen; „Abmelden“ löscht sie.', 'Lange Listen laden schrittweise beim Scrollen.', 'Alle Änderungen landen im Aktivitätsprotokoll (Quelle App, Telegram oder MCP).'] },
       { h: 'Testdaten' },
       { code: 'cd apps/api\npython -m scripts.seed_demo --scale 1' },
       { p: 'Erzeugt hunderte Notizen und Aufgaben, Projekte, Termine, Archiv, Telegram-Verlauf und Statistiken – ohne echte Telegram-Nachrichten auszulösen.' },
@@ -189,16 +193,18 @@ const en: DocSection[] = [
     ],
   },
   {
-    id: 'setup', title: 'Setup', summary: 'Installation, start and access code.',
+    id: 'setup', title: 'Setup', summary: 'Installation, start, accounts and sign-in.',
     blocks: [
       { h: 'Requirements' },
       { list: ['Node.js 20+ and npm', 'Python 3.11+', 'Optional: Docker (for PostgreSQL)'] },
       { h: 'Start' },
-      { steps: ['Install dependencies: npm install in the project folder.', 'Set up the API: create a virtual environment in apps/api and run pip install -e .', 'Start the API (port 8000), then the web app (port 3000).', 'Open http://localhost:3000 and enter the access code.'] },
+      { steps: ['Install dependencies: npm install in the project folder.', 'Set up the API: create a virtual environment in apps/api and run pip install -e .', 'Start the API (port 8000), then the web app (port 3000).', 'Open http://localhost:3000. On the first start you create the admin account; it takes over the existing workspace.'] },
       { code: 'cd apps/api\nuvicorn app.main:app --host 0.0.0.0 --port 8000\n\ncd apps/web\nnpm run dev' },
       { h: 'Configuration' },
-      { table: [['APP_ACCESS_CODE', 'Six-digit code for the web app'], ['DATABASE_URL', 'e.g. sqlite:///./plm.sqlite3 – otherwise PostgreSQL via POSTGRES_*'], ['UPLOAD_DIR', 'Where files are stored (default: apps/api/data/uploads)'], ['MAX_UPLOAD_MB', 'Maximum file size (default: 25)'], ['SCHEDULER_ENABLED', 'Background services for reminders and Telegram']] },
+      { table: [['AUTH_MODE', 'multi (default): sign-in with username and password, every account has its own workspace · single: no accounts, one local workspace'], ['WORKSPACES_DIR', 'Databases and files of the additional accounts (default: apps/api/data/workspaces)'], ['SESSION_DAYS', 'How long a sign-in stays valid without use (default: 30)'], ['DATABASE_URL', 'e.g. sqlite:///./plm.sqlite3 – otherwise PostgreSQL via POSTGRES_*'], ['UPLOAD_DIR', 'Where files are stored (default: apps/api/data/uploads)'], ['MAX_UPLOAD_MB', 'Maximum file size (default: 25)'], ['SCHEDULER_ENABLED', 'Background services for reminders and Telegram']] },
       { tip: 'Tables and new columns are created automatically when the API starts – no migrations needed.' },
+      { h: 'Accounts' },
+      { list: ['Admins manage accounts under Settings › Users: create, reset password, disable, delete.', 'Every account has its own workspace: data, files, settings, Telegram bot and MCP token are separate.', 'Under Settings › Account you change your password and sign out single browsers.', 'Forgot the password? On the server: python -m scripts.users password <name> (in apps/api).'] },
     ],
   },
   {
@@ -316,7 +322,7 @@ const en: DocSection[] = [
       { h: 'Shortcuts' },
       { table: [['Ctrl + K', 'Global search'], ['Ctrl + Enter', 'Send in the Telegram menu'], ['Esc', 'Close dialog, preview or focus mode'], ['Middle-click a tab', 'Close a note tab']] },
       { h: 'Data & performance' },
-      { list: ['The browser keeps a copy of the workspace so pages appear instantly; “Lock workspace” removes it.', 'Long lists load progressively while you scroll.', 'Every change is written to the activity log (source app, Telegram or MCP).'] },
+      { list: ['The browser keeps a copy of the workspace so pages appear instantly; “Sign out” removes it.', 'Long lists load progressively while you scroll.', 'Every change is written to the activity log (source app, Telegram or MCP).'] },
       { h: 'Demo data' },
       { code: 'cd apps/api\npython -m scripts.seed_demo --scale 1' },
       { p: 'Creates hundreds of notes and tasks, projects, events, archive entries, Telegram history and statistics – without sending real Telegram messages.' },
@@ -326,4 +332,11 @@ const en: DocSection[] = [
   },
 ];
 
-export const docs = { de, en } as const;
+import type { Language } from '@/lib/types';
+
+const translated: Partial<Record<Language, DocSection[]>> = { de, en };
+
+/** The built-in docs exist in German and English; other languages read the English version. */
+export function docsFor(language: Language): DocSection[] {
+  return translated[language] ?? en;
+}

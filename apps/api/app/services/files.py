@@ -6,10 +6,9 @@ from typing import BinaryIO
 
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.config import API_ROOT, get_settings
+from app.db.session import DEFAULT_WORKSPACE, current_workspace, workspace_dir
 from app.models import StoredFile
-
-API_ROOT = Path(__file__).resolve().parents[2]
 
 # Extension -> (kind, content type). Anything else is rejected, so no HTML/SVG/scripts are ever served.
 ALLOWED: dict[str, tuple[str, str]] = {
@@ -35,8 +34,13 @@ class UploadRejectedError(ValueError):
 
 
 def upload_dir() -> Path:
-    path = Path(get_settings().upload_dir)
-    path = path if path.is_absolute() else API_ROOT / path
+    """Upload folder of the current workspace (UPLOAD_DIR for the default workspace)."""
+    key = current_workspace()
+    if key == DEFAULT_WORKSPACE:
+        path = Path(get_settings().upload_dir)
+        path = path if path.is_absolute() else API_ROOT / path
+    else:
+        path = workspace_dir(key) / "uploads"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

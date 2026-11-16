@@ -12,7 +12,7 @@ import { colorOf } from '@/lib/appearance';
 import { formatDate, formatDateTime, toDateKey } from '@/lib/dates';
 import { allEntities, entityColors, entityIcons, entityLabelKeys, type ResolvedEntity } from '@/lib/entities';
 import { hasFilters, parseQuery } from '@/lib/search-query';
-import type { EntityType } from '@/lib/types';
+import type { EntityType, Language } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export type SearchPage = { href: string; label: string; icon: LucideIcon };
@@ -243,7 +243,7 @@ export function GlobalSearch({ open, onOpenChange, pages }: { open: boolean; onO
   );
 }
 
-function ResultItem({ hit, words, language, onSelect, tags }: { hit: Hit; words: string[]; language: 'de' | 'en'; onSelect: (href: string) => void; tags?: string[] }) {
+function ResultItem({ hit, words, language, onSelect, tags }: { hit: Hit; words: string[]; language: Language; onSelect: (href: string) => void; tags?: string[] }) {
   const { t } = useI18n();
   const Icon = entityIcons[hit.entity.type];
   return (

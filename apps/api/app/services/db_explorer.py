@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import MetaData, String, Table, asc, cast, desc, func, inspect, or_, select, text
 from sqlalchemy.orm import Session
 
-from app.db.session import engine
+from app.db.session import current_engine
 from app.models import ActivityLog
 from app.models.base import Base, utcnow
 from app.services.registry import ENTITY_MODELS
@@ -27,9 +27,9 @@ class UnknownTableError(LookupError):
 
 def database_size(db: Session) -> int | None:
     try:
-        if engine.dialect.name == "sqlite":
+        if current_engine().dialect.name == "sqlite":
             return int(db.execute(text("PRAGMA page_count")).scalar_one()) * int(db.execute(text("PRAGMA page_size")).scalar_one())
-        if engine.dialect.name == "postgresql":
+        if current_engine().dialect.name == "postgresql":
             return int(db.execute(text("SELECT pg_database_size(current_database())")).scalar_one())
     except Exception:  # noqa: BLE001 - size is informational only
         db.rollback()
@@ -38,9 +38,9 @@ def database_size(db: Session) -> int | None:
 
 def _table_sizes(db: Session) -> dict[str, int]:
     try:
-        if engine.dialect.name == "sqlite":
+        if current_engine().dialect.name == "sqlite":
             rows = db.execute(text("SELECT name, SUM(pgsize) FROM dbstat GROUP BY name")).all()
-        elif engine.dialect.name == "postgresql":
+        elif current_engine().dialect.name == "postgresql":
             rows = db.execute(text(
                 "SELECT relname, pg_total_relation_size(relid) FROM pg_catalog.pg_statio_user_tables"
             )).all()
@@ -53,16 +53,16 @@ def _table_sizes(db: Session) -> dict[str, int]:
 
 
 def _reflect(name: str) -> Table:
-    if name not in inspect(engine).get_table_names():
+    if name not in inspect(current_engine()).get_table_names():
         raise UnknownTableError(f"Table {name} not found")
-    return Table(name, MetaData(), autoload_with=engine)
+    return Table(name, MetaData(), autoload_with=current_engine())
 
 
 def _foreign_keys(name: str) -> list[dict[str, Any]]:
     """Foreign keys from the database, plus those declared in the models (columns added later have none in SQLite)."""
     keys = {
         (column, fk["referred_table"], (fk["referred_columns"] or ["id"])[0])
-        for fk in inspect(engine).get_foreign_keys(name)
+        for fk in inspect(current_engine()).get_foreign_keys(name)
         for column in fk["constrained_columns"]
     }
     model_table = Base.metadata.tables.get(name)
@@ -73,7 +73,7 @@ def _foreign_keys(name: str) -> list[dict[str, Any]]:
 
 
 def schema(db: Session) -> dict[str, Any]:
-    inspector = inspect(engine)
+    inspector = inspect(current_engine())
     sizes = _table_sizes(db)
     since = utcnow() - timedelta(days=7)
     changes_by_type = dict(db.execute(
@@ -119,7 +119,7 @@ def schema(db: Session) -> dict[str, Any]:
             "changes_7d": changes.get(name, 0),
         })
     return {
-        "engine": engine.dialect.name,
+        "engine": current_engine().dialect.name,
         "size": database_size(db),
         "tables": tables,
         "total_rows": sum(table["rows"] for table in tables),

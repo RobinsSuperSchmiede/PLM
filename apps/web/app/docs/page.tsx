@@ -7,7 +7,7 @@ import { useI18n } from '@/components/i18n-provider';
 import { SidebarItem, SidebarSection, SplitLayout } from '@/components/split-layout';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/workspace-ui';
-import { type DocBlock, type DocSection, docs } from '@/lib/docs';
+import { type DocBlock, type DocSection, docsFor } from '@/lib/docs';
 import { cn } from '@/lib/utils';
 
 function blockText(block: DocBlock): string {
@@ -22,7 +22,7 @@ function blockText(block: DocBlock): string {
 
 export default function DocsPage() {
   const { t, language } = useI18n();
-  const sections = docs[language];
+  const sections = docsFor(language);
   const [active, setActive] = useState(sections[0].id);
   const [query, setQuery] = useState('');
   const scroller = useRef<HTMLDivElement>(null);

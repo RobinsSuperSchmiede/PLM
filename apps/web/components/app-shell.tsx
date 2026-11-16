@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { CalendarDays, CheckSquare2, ChevronRight, FolderTree, Home, type LucideIcon, Menu, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react';
+import { CalendarDays, CheckSquare2, ChevronRight, FolderTree, Home, LogOut, type LucideIcon, Menu, PanelLeftClose, PanelLeftOpen, Search, UserRound, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AmbientBackground } from '@/components/ambient-background';
+import { useAccount } from '@/components/auth-gate';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { TelegramMenu } from '@/components/quick-capture';
 import { useWorkspace } from '@/components/workspace-provider';
@@ -192,6 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="pointer-events-auto flex items-center justify-end gap-1.5 sm:ml-auto">
           <TelegramMenu />
+          <AccountMenu />
         </div>
       </header>
 
@@ -294,6 +297,35 @@ function RailButton({ open, label, icon: Icon, onClick, pressed }: { open: boole
       <Icon className="shrink-0" style={{ width: 16, height: 16 }} strokeWidth={1.6} />
       <RailLabel open={open}>{label}</RailLabel>
     </button>
+  );
+}
+
+/** Signed-in account with links to its settings and sign-out (only with accounts). */
+function AccountMenu() {
+  const { t } = useI18n();
+  const { mode, user, signOut } = useAccount();
+  if (mode !== 'multi' || !user) return null;
+  const name = user.display_name || user.username;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label={t('account.menu')} title={name}
+          className="ds-glass flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold uppercase shadow-sm transition-[background-color,box-shadow] duration-500 ease-ds hover:bg-glass-hover hover:shadow-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+          {name.slice(0, 2)}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[13rem]">
+        <DropdownMenuLabel className="font-normal">
+          <span className="block truncate text-sm font-medium">{name}</span>
+          <span className="block truncate text-xs text-muted-foreground">@{user.username}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild><Link href="/settings?tab=account"><UserRound />{t('account.title')}</Link></DropdownMenuItem>
+        {user.is_admin && <DropdownMenuItem asChild><Link href="/settings?tab=users"><Users />{t('account.usersTitle')}</Link></DropdownMenuItem>}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => void signOut()}><LogOut />{t('account.signOut')}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

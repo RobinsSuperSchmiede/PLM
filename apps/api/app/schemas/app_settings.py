@@ -45,7 +45,7 @@ class SettingsRead(BaseModel):
 
 
 class SettingsUpdate(BaseModel):
-    language: Literal["de", "en"] | None = None
+    language: Literal["de", "en", "zh", "es", "pt", "ja"] | None = None
     theme: Literal["light", "dark", "system"] | None = None
     onboarding_done: bool | None = None
     custom_domain: str | None = None

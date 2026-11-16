@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from mcp.server.transport_security import TransportSecuritySettings
@@ -11,7 +11,6 @@ from app.core.config import get_settings
 from app.db.session import init_db
 from app.mcp_server.guard import AccessGuardMiddleware
 from app.mcp_server.server import mcp
-from app.services import usage
 from app.services.scheduler import start_background_tasks
 
 settings = get_settings()
@@ -59,16 +58,6 @@ app.add_middleware(AccessGuardMiddleware)
 # Large JSON lists (hundreds of notes and tasks) shrink a lot when compressed.
 app.add_middleware(GZipMiddleware, minimum_size=2048)
 
-
-@app.middleware("http")
-async def count_requests(request: Request, call_next):  # type: ignore[no-untyped-def]
-    path = request.url.path
-    if path.startswith("/mcp"):
-        usage.count("mcp")
-    elif path.startswith("/api/v1") and not path.endswith(("/health", "/stats")):
-        usage.count("api")
-    response: Response = await call_next(request)
-    return response
 
 app.include_router(api_router, prefix="/api/v1")
 

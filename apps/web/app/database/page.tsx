@@ -15,7 +15,7 @@ import { PaneHeader, SidebarItem, SidebarSection, SplitLayout } from '@/componen
 import { CountUp, EmptyState, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { api, peek } from '@/lib/api';
 import { formatDateTime } from '@/lib/dates';
-import type { DbRows, DbSchema, DbTable } from '@/lib/types';
+import type { DbRows, DbSchema, DbTable, Language } from '@/lib/types';
 import { cn, formatBytes } from '@/lib/utils';
 
 const PAGE_SIZE = 50;
@@ -255,7 +255,7 @@ function RowsView({ table }: { table: DbTable }) {
   );
 }
 
-function Cell({ value, language }: { value: unknown; language: 'de' | 'en' }) {
+function Cell({ value, language }: { value: unknown; language: Language }) {
   if (value === null || value === undefined) return <span className="text-muted-foreground/60">NULL</span>;
   if (typeof value === 'boolean') return <span className={value ? 'text-success' : 'text-muted-foreground'}>{String(value)}</span>;
   if (typeof value === 'number') return <span className="tabular-nums">{value.toLocaleString(language)}</span>;

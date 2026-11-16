@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { BellRing, ChevronLeft, ChevronRight, MapPin, Plus, X } from 'lucide-react';
 
+import { localeOf } from '@/lib/languages';
 import { EventDialog } from '@/components/event-dialog';
 import { ANY, FilterBar } from '@/components/filter-bar';
 import { useI18n } from '@/components/i18n-provider';
@@ -120,7 +121,7 @@ function CalendarView() {
     <div className="flex flex-col gap-3.5 lg:h-[calc(100vh-3.5rem-4rem)]">
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
         <h1 className="text-[26px] font-semibold capitalize leading-none tracking-[-0.02em]">
-          {anchor.toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { month: 'long' })} <span className="font-medium text-muted-foreground">{anchor.getFullYear()}</span>
+          {anchor.toLocaleDateString(localeOf(language), { month: 'long' })} <span className="font-medium text-muted-foreground">{anchor.getFullYear()}</span>
         </h1>
         <div className="ds-glass ml-1 flex gap-0.5 rounded-full p-[3px]" role="toolbar" aria-label={t('calendar.title')}>
           <Button variant="ghost" size="icon-sm" aria-label={t('calendar.previous')} onClick={() => step(-1)}><ChevronLeft /></Button>

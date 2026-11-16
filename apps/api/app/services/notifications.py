@@ -141,6 +141,11 @@ BOT_COMMANDS = {
 # --- Settings -----------------------------------------------------------------------------------
 
 
+
+def bot_language(language: str | None) -> str:
+    """The bot speaks German and English; every other interface language gets the English bot."""
+    return "de" if language == "de" else "en"
+
 def new_link_code() -> str:
     return secrets.token_hex(8)
 
@@ -200,7 +205,7 @@ def update_telegram_settings(db: Session, payload: TelegramUpdate) -> TelegramSe
             _reset_connection(row)
             language = get_app_settings(db).language
             try:
-                telegram.call(token, "setMyCommands", commands=[{"command": c, "description": d} for c, d in BOT_COMMANDS[language]])
+                telegram.call(token, "setMyCommands", commands=[{"command": c, "description": d} for c, d in BOT_COMMANDS[bot_language(language)]])
             except telegram.TelegramError:
                 logger.warning("Could not register Telegram bot commands", exc_info=True)
     if values.get("login_2fa") and not is_ready(row):
@@ -254,7 +259,7 @@ def log_message(db: Session, direction: str, text: str, entity: Any = None) -> N
 
 
 def texts(db: Session) -> dict[str, str]:
-    return TEXTS.get(get_app_settings(db).language, TEXTS["de"])
+    return TEXTS[bot_language(get_app_settings(db).language)]
 
 
 def local_now(row: TelegramSettings) -> datetime:

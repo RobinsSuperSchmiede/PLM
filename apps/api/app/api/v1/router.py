@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.crud_router import build_crud_router
-from app.api.v1.endpoints import auth, files, health, insights, lists, organization, overview, settings, telegram, warehouse
+from app.api.v1.endpoints import account, auth, files, health, insights, lists, organization, overview, settings, telegram, warehouse
 from app.api.v1.endpoints.sync import SyncResource, build_sync_router
 from app.models import Event, Folder, Idea, KnowledgeArticle, Meeting, Note, Project, Record, Reminder, StoredFile, Task, WorkspaceList
 from app.schemas.event import EventCreate, EventRead, EventUpdate
@@ -26,6 +26,7 @@ api_router.include_router(organization.router)
 api_router.include_router(insights.router)
 api_router.include_router(files.router)
 api_router.include_router(auth.router)
+api_router.include_router(account.router)
 api_router.include_router(warehouse.router)
 
 crud_resources = [

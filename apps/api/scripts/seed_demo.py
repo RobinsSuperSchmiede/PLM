@@ -16,7 +16,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal, _add_missing_columns, engine
+from app.db import session as db_session
 from app.models import (
     ActivityLog, ApiUsage, EntityLink, EntityTag, Event, Folder, Idea, KnowledgeArticle, ListItem, Meeting, Note, NotificationLog, Project, Record,
     Reminder, Tag, Task, TelegramMessageLog, WorkspaceList,
@@ -419,14 +419,25 @@ def main() -> None:
     parser.add_argument("--scale", type=float, default=1.0, help="Multiply the amount of generated data (default 1.0)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible data")
     parser.add_argument("--files-only", action="store_true", help="Only add demo images and documents (e.g. to an already seeded database)")
+    parser.add_argument("--user", help="Seed the workspace of this account instead of the default workspace (multi-user mode)")
     args = parser.parse_args()
     random.seed(args.seed)
     # Create tables/columns without installing the activity listener: the history is written explicitly with past timestamps.
     from app import models  # noqa: F401
 
+    key = db_session.DEFAULT_WORKSPACE
+    if args.user:
+        from app.services import accounts
+
+        user = accounts.find_user(args.user)
+        if user is None:
+            raise SystemExit(f"No account named {args.user!r}")
+        key = user.workspace
+    url, schema = db_session._url_for(key)
+    engine = db_session._new_engine(url, schema)
     Base.metadata.create_all(bind=engine)
-    _add_missing_columns(Base.metadata)
-    with SessionLocal() as db:
+    db_session._add_missing_columns(Base.metadata, engine)
+    with db_session.use_workspace(key), db_session._factory(bind=engine) as db:
         added = {} if args.files_only else seed(db, args.scale)
         added["files"] = seed_files(db, args.scale)
     print("Demo data added:", ", ".join(f"{key}={value}" for key, value in added.items()))

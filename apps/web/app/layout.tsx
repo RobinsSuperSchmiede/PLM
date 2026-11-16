@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 
-import { AccessGate } from '@/components/access-gate';
+import { AuthGate } from '@/components/auth-gate';
 import { AppShell } from '@/components/app-shell';
 import { I18nProvider } from '@/components/i18n-provider';
 import { Toaster } from '@/components/ui/sonner';
@@ -37,9 +37,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <I18nProvider>
             <TooltipProvider delayDuration={300}>
-              <AccessGate>
+              <AuthGate>
                 <AppShell>{children}</AppShell>
-              </AccessGate>
+              </AuthGate>
               <Toaster position="bottom-right" />
             </TooltipProvider>
           </I18nProvider>

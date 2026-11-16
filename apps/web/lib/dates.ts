@@ -1,3 +1,4 @@
+import { localeOf } from '@/lib/languages';
 import type { Language } from '@/lib/types';
 
 export const toDateKey = (date: Date) =>
@@ -13,23 +14,22 @@ export function addDays(date: Date, amount: number) {
   return next;
 }
 
-const locales: Record<Language, string> = { de: 'de-DE', en: 'en-US' };
 
 export function formatDate(key: string, language: Language, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }) {
-  return fromDateKey(key).toLocaleDateString(locales[language], options);
+  return fromDateKey(key).toLocaleDateString(localeOf(language), options);
 }
 
 export function formatDateTime(iso: string, language: Language) {
-  return new Date(iso).toLocaleString(locales[language], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(localeOf(language), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function formatMonth(date: Date, language: Language) {
-  return date.toLocaleDateString(locales[language], { month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(localeOf(language), { month: 'long', year: 'numeric' });
 }
 
 export function weekdayNames(language: Language) {
   const monday = new Date(2024, 0, 1);
-  return Array.from({ length: 7 }, (_, index) => addDays(monday, index).toLocaleDateString(locales[language], { weekday: 'short' }));
+  return Array.from({ length: 7 }, (_, index) => addDays(monday, index).toLocaleDateString(localeOf(language), { weekday: 'short' }));
 }
 
 /** Relative label (today/tomorrow/yesterday) or a short date. */

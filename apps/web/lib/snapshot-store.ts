@@ -20,7 +20,12 @@ export type Snapshot = {
 
 const databaseName = 'anamnesies';
 const storeName = 'cache';
-const snapshotKey = 'snapshot.v2';
+/** Every account (and the single-user workspace) has its own copy; set by AuthGate before loading. */
+let snapshotKey = 'snapshot.v2:single';
+
+export function setSnapshotScope(scope: string): void {
+  snapshotKey = `snapshot.v2:${scope}`;
+}
 /** Where the snapshot lived before; removed once so the old copy does not keep using storage. */
 const legacyLocalStorageKey = 'anamnesies.snapshot.v1';
 
@@ -54,6 +59,8 @@ export async function readSnapshot(): Promise<Snapshot | null> {
   try {
     window.localStorage.removeItem(legacyLocalStorageKey);
   } catch { /* storage unavailable */ }
+  // Before accounts there was one shared copy; it is dropped so it cannot show up in another account.
+  void run('readwrite', (store) => store.delete('snapshot.v2')).catch(() => undefined);
   try {
     const snapshot = await run<Snapshot | undefined>('readonly', (store) => store.get(snapshotKey));
     return snapshot?.data && snapshot.syncedAt ? snapshot : null;

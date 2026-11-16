@@ -39,6 +39,38 @@ const samples: Record<Language, {
     chat: ['/task Buy milk tomorrow', '✓ Task “Buy milk” added for tomorrow', '⏰ Reminder: meeting in 15 minutes'],
     prompt: 'Summarize my meeting and create the tasks', tool: 'create_task · create_note', result: '3 tasks and 1 note created',
   },
+  es: {
+    folders: ['Trabajo', 'Proyectos', 'Personal', 'Recetas'], note: 'Inicio del sitio web', lines: ['Aclarar objetivos y alcance', 'Revisar presupuesto · [[Oferta]]', 'Próxima reunión: viernes'],
+    tasks: ['Redactar oferta', 'Revisión de diseño', 'Pagar factura', 'Preparar lanzamiento'], project: 'Renovación del sitio web',
+    events: [[1, '09:00 Standup'], [2, '14:00 Revisión'], [4, 'Dentista'], [5, '18:00 Gimnasio']],
+    nodes: ['Proyecto', 'Nota', 'Tarea', 'Reunión', 'Documento', '#cliente'],
+    chat: ['/task Comprar leche mañana', '✓ Tarea «Comprar leche» creada para mañana', '⏰ Recordatorio: reunión en 15 minutos'],
+    prompt: 'Resume mi reunión y crea las tareas', tool: 'create_task · create_note', result: '3 tareas y 1 nota creadas',
+  },
+  pt: {
+    folders: ['Trabalho', 'Projetos', 'Pessoal', 'Receitas'], note: 'Kickoff do site', lines: ['Definir objetivos e escopo', 'Verificar orçamento · [[Proposta]]', 'Próxima reunião: sexta-feira'],
+    tasks: ['Escrever proposta', 'Revisão de design', 'Pagar fatura', 'Preparar lançamento'], project: 'Relançamento do site',
+    events: [[1, '09:00 Standup'], [2, '14:00 Revisão'], [4, 'Dentista'], [5, '18:00 Academia']],
+    nodes: ['Projeto', 'Nota', 'Tarefa', 'Reunião', 'Documento', '#cliente'],
+    chat: ['/task Comprar leite amanhã', '✓ Tarefa “Comprar leite” criada para amanhã', '⏰ Lembrete: reunião em 15 minutos'],
+    prompt: 'Resuma minha reunião e crie as tarefas', tool: 'create_task · create_note', result: '3 tarefas e 1 nota criadas',
+  },
+  zh: {
+    folders: ['工作', '项目', '个人', '食谱'], note: '网站启动会', lines: ['明确目标和范围', '核对预算 · [[报价]]', '下次会议：周五'],
+    tasks: ['撰写报价', '设计评审', '支付账单', '准备发布'], project: '网站改版',
+    events: [[1, '09:00 站会'], [2, '14:00 评审'], [4, '看牙医'], [5, '18:00 健身']],
+    nodes: ['项目', '笔记', '任务', '会议', '文档', '#客户'],
+    chat: ['/task 明天买牛奶', '✓ 已为明天创建任务“买牛奶”', '⏰ 提醒：15 分钟后开会'],
+    prompt: '总结我的会议并创建任务', tool: 'create_task · create_note', result: '已创建 3 个任务和 1 条笔记',
+  },
+  ja: {
+    folders: ['仕事', 'プロジェクト', 'プライベート', 'レシピ'], note: 'Webサイト キックオフ', lines: ['目標と範囲を明確にする', '予算を確認 · [[見積もり]]', '次回ミーティング：金曜日'],
+    tasks: ['見積もりを作成', 'デザインレビュー', '請求書を支払う', 'リリース準備'], project: 'Webサイト リニューアル',
+    events: [[1, '09:00 朝会'], [2, '14:00 レビュー'], [4, '歯医者'], [5, '18:00 ジム']],
+    nodes: ['プロジェクト', 'メモ', 'タスク', 'ミーティング', 'ドキュメント', '#顧客'],
+    chat: ['/task 明日 牛乳を買う', '✓ タスク「牛乳を買う」を明日に追加しました', '⏰ リマインダー：15分後にミーティング'],
+    prompt: 'ミーティングを要約してタスクを作成して', tool: 'create_task · create_note', result: 'タスク3件とメモ1件を作成しました',
+  },
 };
 
 function prefersReducedMotion() {

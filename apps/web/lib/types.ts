@@ -96,7 +96,7 @@ export type TelegramUpdate = Partial<Pick<TelegramSettings, 'enabled' | 'command
   bot_token?: string;
 };
 
-export type Language = 'de' | 'en';
+export type Language = 'de' | 'en' | 'zh' | 'es' | 'pt' | 'ja';
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type SmtpSecurity = 'none' | 'starttls' | 'ssl';
 
