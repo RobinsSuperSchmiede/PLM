@@ -60,6 +60,14 @@ const viewPages: Partial<Record<View, string>> = { tasks: '/tasks', projects: '/
 const UNFILED = 'unfiled';
 const NONE = 'none';
 const DRAG_TYPE = 'application/x-anamnesies';
+/** Set as well when a note is dragged: types (unlike the data) can be read during dragover. */
+const NOTE_DRAG_TYPE = 'application/x-anamnesies-note';
+
+function setDragPayload(event: React.DragEvent, payload: { kind: ItemKind | 'folder'; id: string }) {
+  event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(payload));
+  if (payload.kind === 'note') event.dataTransfer.setData(NOTE_DRAG_TYPE, payload.id);
+  event.dataTransfer.effectAllowed = 'move';
+}
 const fg2 = 'text-[hsl(var(--fg-2)/var(--fg-2-a))]';
 
 type Period = 'any' | '7' | '30' | '365';
@@ -207,6 +215,17 @@ function Workspace() {
   const open = useCallback((id: string) => go({ id }), [go]);
   // Shows a note on the right; without an open note it simply opens.
   const openBeside = useCallback((id: string) => (activeId && activeId !== id ? go({ split: id }) : go({ id })), [activeId, go]);
+  /** A note dropped on the editor: right half opens it beside, left half replaces the left note. */
+  const dropNote = useCallback((id: string, side: DropSide) => {
+    if (side === 'right') {
+      if (id !== activeId) go({ split: id });
+      else if (splitId) go({ id: splitId, split: activeId });
+    } else if (id === splitId) {
+      go({ id, split: activeId });
+    } else if (id !== activeId) {
+      go({ id });
+    }
+  }, [activeId, go, splitId]);
   const categories = useMemo(() => Array.from(new Set(data.knowledge.map((entry) => entry.category).filter(Boolean) as string[])).sort(), [data.knowledge]);
 
   function closeTab(id: string) {
@@ -262,7 +281,7 @@ function Workspace() {
           <div className="flex shrink-0 items-center gap-1 overflow-x-auto px-4 pt-3 [scrollbar-width:none] lg:px-2" role="tablist" aria-label={t('explorer.tabs')}>
             <TabButton active={!active} onClick={() => go({ id: null })} icon={LayoutGrid} label={t('explorer.overview')} />
             {openTabs.map((note) => (
-              <TabButton key={note.id} active={note.id === activeId} secondary={note.id === splitNote?.id} onClick={() => selectTab(note.id)} onClose={() => closeTab(note.id)}
+              <TabButton key={note.id} dragId={note.id} active={note.id === activeId} secondary={note.id === splitNote?.id} onClick={() => selectTab(note.id)} onClose={() => closeTab(note.id)}
                 onOpenBeside={note.id !== activeId && note.id !== splitNote?.id && active ? () => openBeside(note.id) : undefined}
                 icon={FileText} label={note.title || t('common.untitled')} pinned={note.pinned} />
             ))}
@@ -270,7 +289,7 @@ function Workspace() {
         )}
 
         {active ? (
-          <div className={cn('min-h-0 flex-1', splitNote ? 'flex flex-col lg:grid lg:grid-cols-2 lg:divide-x' : 'overflow-y-auto')}>
+          <SplitDropArea onDropNote={dropNote} className={cn('min-h-0 flex-1', splitNote ? 'flex flex-col lg:grid lg:grid-cols-2 lg:divide-x' : 'overflow-y-auto')}>
             <div className={cn(splitNote && 'min-h-[60vh] min-w-0 overflow-y-auto lg:min-h-0')}>
               <NoteEditor key={active.id} note={active} focus={focus} compact={Boolean(splitNote)} onToggleFocus={() => setFocus((value) => !value)} beforeClose={beforeClose}
                 actions={!splitNote && <SplitPicker activeId={active.id} tabIds={openTabs.map((note) => note.id)} onPick={openBeside} />}
@@ -295,7 +314,7 @@ function Workspace() {
                   }} />
               </div>
             )}
-          </div>
+          </SplitDropArea>
         ) : (
           <Browser scope={scope} view={view} treeOpen={treeOpen} onToggleTree={toggleTree} onOpenNote={open} onOpenDocument={setArticle}
             onCreateNote={() => void createNote()} onCreateDocument={() => setArticle('new')}
@@ -310,8 +329,82 @@ function Workspace() {
   );
 }
 
-function TabButton({ active, secondary, onClick, onClose, onOpenBeside, icon: Icon, label, pinned }: {
+type DropSide = 'left' | 'right';
+
+/**
+ * Editor area that takes notes dragged from the tree, the tabs, the overview or the split picker.
+ * While a note is dragged over it, two halves appear: left = open here, right = open beside.
+ * Listens in the capture phase so the editor itself does not insert the dragged note as text.
+ */
+function SplitDropArea({ onDropNote, className, children }: { onDropNote: (id: string, side: DropSide) => void; className?: string; children: ReactNode }) {
+  const { t } = useI18n();
+  const [side, setSide] = useState<DropSide | null>(null);
+
+  // A drag that ends somewhere else (Escape, outside the window) must not leave the overlay behind.
+  useEffect(() => {
+    if (!side) return;
+    const clear = () => setSide(null);
+    window.addEventListener('dragend', clear);
+    window.addEventListener('drop', clear);
+    return () => {
+      window.removeEventListener('dragend', clear);
+      window.removeEventListener('drop', clear);
+    };
+  }, [side]);
+
+  const sideOf = (event: React.DragEvent<HTMLDivElement>): DropSide => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    // On narrow screens the split view is stacked, so the halves are top and bottom.
+    const stacked = window.innerWidth < 1024;
+    return (stacked ? event.clientY - rect.top > rect.height / 2 : event.clientX - rect.left > rect.width / 2) ? 'right' : 'left';
+  };
+  const isNote = (event: React.DragEvent) => event.dataTransfer.types.includes(NOTE_DRAG_TYPE);
+
+  return (
+    <div
+      className={cn('relative', className)}
+      onDragOverCapture={(event) => {
+        if (!isNote(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        const next = sideOf(event);
+        setSide((current) => (current === next ? current : next));
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSide(null);
+      }}
+      onDropCapture={(event) => {
+        if (!isNote(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const target = sideOf(event);
+        setSide(null);
+        const id = event.dataTransfer.getData(NOTE_DRAG_TYPE);
+        if (id) onDropNote(id, target);
+      }}
+    >
+      {children}
+      {side && (
+        <div className="pointer-events-none absolute inset-0 z-20 grid grid-rows-2 gap-2 p-2 duration-150 animate-in fade-in lg:grid-cols-2 lg:grid-rows-1" aria-hidden="true">
+          {(['left', 'right'] as const).map((half) => (
+            <div key={half} className={cn('flex items-center justify-center rounded-2xl border-2 border-dashed transition-colors duration-150',
+              side === half ? 'border-brand bg-brand/10' : 'border-border bg-background/50')}>
+              <span className={cn('ds-glass flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-medium shadow-sm', side === half ? 'text-foreground' : 'text-muted-foreground')}>
+                {half === 'right' ? <Columns2 className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                {half === 'right' ? t('split.dropRight') : t('split.dropLeft')}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabButton({ active, secondary, onClick, onClose, onOpenBeside, icon: Icon, label, pinned, dragId }: {
   active: boolean;
+  /** Note id: the tab can be dragged onto the editor to open the note on one side. */
+  dragId?: string;
   /** Shown on the right side of the split view. */
   secondary?: boolean;
   onClick: () => void;
@@ -327,6 +420,8 @@ function TabButton({ active, secondary, onClick, onClose, onOpenBeside, icon: Ic
       role="tab"
       aria-selected={active}
       tabIndex={0}
+      draggable={Boolean(dragId)}
+      onDragStart={dragId ? (event) => setDragPayload(event, { kind: 'note', id: dragId }) : undefined}
       onClick={onClick}
       onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && (event.preventDefault(), onClick())}
       onAuxClick={(event) => { if (event.button === 1 && onClose) { event.preventDefault(); onClose(); } }}
@@ -656,8 +751,7 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
               renderItem={(entry) => (
                 <button type="button" draggable aria-pressed={entry.key === selected} {...folderDrop(entry)}
                   onDragStart={(event) => {
-                    event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind: entry.kind, id: entry.id }));
-                    event.dataTransfer.effectAllowed = 'move';
+                    setDragPayload(event, { kind: entry.kind, id: entry.id });
                   }}
                   onClick={() => pick(entry)} onDoubleClick={() => openEntry(entry)}
                   onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); openEntry(entry); } }}
@@ -680,8 +774,7 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
                 return (
                   <button type="button" draggable aria-pressed={entry.key === selected} onClick={() => pick(entry)} onDoubleClick={() => openEntry(entry)} {...folderDrop(entry)}
                     onDragStart={(event) => {
-                      event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind: entry.kind, id: entry.id }));
-                      event.dataTransfer.effectAllowed = 'move';
+                      setDragPayload(event, { kind: entry.kind, id: entry.id });
                     }}
                     onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); openEntry(entry); } }}
                     className={cn('grid h-[38px] w-full grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 rounded-full px-2.5 text-left text-[13px] transition-[background-color,box-shadow] duration-300 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring sm:grid-cols-[28px_minmax(0,1fr)_9rem_9rem]',
@@ -1146,8 +1239,7 @@ function FileRow({ entry, depth, active, onOpen, onOpenBeside }: { entry: TreeFi
     <li
       draggable
       onDragStart={(event) => {
-        event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind: entry.kind, id: entry.id }));
-        event.dataTransfer.effectAllowed = 'move';
+        setDragPayload(event, { kind: entry.kind, id: entry.id });
       }}
       className={cn('group flex h-[26px] items-center gap-[3px] rounded-full pr-1 text-[13px] transition-[background-color,color,box-shadow] duration-300 ease-ds',
         active ? 'ds-glass font-medium text-foreground' : cn(fg2, 'hover:bg-accent hover:text-foreground'))}
@@ -1327,7 +1419,8 @@ function SplitPicker({ activeId, tabIds, onPick }: { activeId: string; tabIds: s
     : [...data.notes].filter((note) => note.id !== activeId && !tabIds.includes(note.id)).sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 10);
   const pick = (id: string) => { setOpen(false); setQuery(''); onPick(id); };
   const item = (note: Note) => (
-    <button key={note.id} type="button" onClick={() => pick(note.id)}
+    <button key={note.id} type="button" onClick={() => pick(note.id)} draggable
+      onDragStart={(event) => { setDragPayload(event, { kind: 'note', id: note.id }); window.setTimeout(() => setOpen(false), 0); }}
       className="flex w-full items-center gap-2 rounded-full px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none">
       <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
       <span className="truncate">{note.title || t('common.untitled')}</span>
@@ -1345,6 +1438,7 @@ function SplitPicker({ activeId, tabIds, onPick }: { activeId: string; tabIds: s
       </Tooltip>
       <PopoverContent align="end" className="w-72 p-2">
         <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">{t('split.choose')}</p>
+        <p className="px-2 pb-2 text-xs text-muted-foreground">{t('split.dragHint')}</p>
         <Input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('split.search')} aria-label={t('split.search')} className="h-8"
           onKeyDown={(event) => { if (event.key === 'Enter' && results[0]) pick(results[0].id); }} />
         <div className="mt-2 max-h-72 overflow-y-auto">
