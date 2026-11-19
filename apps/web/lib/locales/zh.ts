@@ -311,5 +311,12 @@ export const zh: Dictionary = {
     doneTitle: '全部就绪', doneText: '你的工作区已准备好。推荐从这里开始：', doneToday: '今天和未来几天到期的事项', doneExplorer: '笔记、文档和文件',
     doneFocus: '你最重要的项目和清单', doneRestart: '你可以随时在“设置 → 常规”中重新开始导览。', restartTitle: '导览',
     restartDesc: '再次查看包含导览、设计、MCP 和 Telegram 的欢迎流程', restart: '重新开始',
+    welcomeLead: "项目、任务、笔记和知识——集中在一处，运行在你的电脑上。",
+    tourLead: "六个场景，一分钟。",
+    designLead: "颜色与氛围——随时可改。",
+    mcpLead: "连接一次，之后一句话就够了。",
+    telegramLead: "随时随地记录任务、接收提醒——大约一分钟即可设置。",
+    doneLead: "你的工作区已准备就绪。想从哪里开始？",
+    stepOf: "第 {current} 步，共 {total} 步",
   },
 };

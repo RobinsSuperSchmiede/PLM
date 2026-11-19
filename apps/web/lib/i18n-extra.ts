@@ -769,6 +769,13 @@ export const deExtra = {
     restartTitle: "Einführung",
     restartDesc: "Die Begrüßung mit Tour, Design, MCP und Telegram noch einmal ansehen",
     restart: "Erneut starten",
+    welcomeLead: "Projekte, Aufgaben, Notizen und Wissen – an einem Ort, lokal bei dir.",
+    tourLead: "Sechs Szenen, eine Minute.",
+    designLead: "Farbe und Stimmung – jederzeit änderbar.",
+    mcpLead: "Einmal verbinden, dann reicht ein Satz.",
+    telegramLead: "Aufgaben und Erinnerungen unterwegs – in etwa einer Minute.",
+    doneLead: "Dein Workspace ist bereit. Wo möchtest du anfangen?",
+    stepOf: "Schritt {current} von {total}",
   },
 };
 
@@ -1541,5 +1548,12 @@ export const enExtra: typeof deExtra = {
     restartTitle: "Walkthrough",
     restartDesc: "See the welcome with tour, design, MCP and Telegram again",
     restart: "Start again",
+    welcomeLead: "Projects, tasks, notes and knowledge – in one place, on your machine.",
+    tourLead: "Six scenes, one minute.",
+    designLead: "Color and mood – change it any time.",
+    mcpLead: "Connect once, then a sentence is enough.",
+    telegramLead: "Tasks and reminders on the go – in about a minute.",
+    doneLead: "Your workspace is ready. Where would you like to start?",
+    stepOf: "Step {current} of {total}",
   },
 };

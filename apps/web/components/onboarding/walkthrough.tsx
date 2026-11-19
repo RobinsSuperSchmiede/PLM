@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type CSSProperties, type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTheme } from 'next-themes';
 import {
-  ArrowLeft, ArrowRight, Bot, Check, CheckCircle2, ExternalLink, FolderTree, Loader2, Monitor, Moon, Palette, Pin, PlayCircle, Send, Sparkles, Sun,
+  ArrowLeft, ArrowRight, Bot, Check, CheckCircle2, ExternalLink, FolderTree, Loader2, Monitor, Moon, Pin, Send, Sun,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AsciiField } from '@/components/onboarding/ascii-field';
 import { FeatureReel } from '@/components/onboarding/feature-reel';
+import { Roadmap } from '@/components/onboarding/roadmap';
 import { useI18n } from '@/components/i18n-provider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,58 +29,76 @@ import { cn } from '@/lib/utils';
 
 const steps = ['welcome', 'tour', 'design', 'mcp', 'telegram', 'done'] as const;
 type Step = typeof steps[number];
-const stepIcons: Record<Step, typeof Sparkles> = { welcome: Sparkles, tour: PlayCircle, design: Palette, mcp: Bot, telegram: Send, done: Check };
+
+/** Delay for one animated element. */
+const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
 /**
- * First-run walkthrough: welcome, a short animated tour, design, MCP and the Telegram bot.
+ * First-run walkthrough, full screen: welcome, a short animated tour, design, MCP and the Telegram bot.
+ * An ASCII contour map moves in the background and a curved roadmap at the bottom marks the stations.
  * Finishing or skipping stores `onboarding_done`, so it shows up once per installation.
  */
 export function Walkthrough({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
   const { saveSettings } = useWorkspace();
   const [step, setStep] = useState<Step>('welcome');
+  const [direction, setDirection] = useState<'next' | 'prev'>('next');
+  const [leaving, setLeaving] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
   const index = steps.indexOf(step);
 
   const finish = useCallback(() => {
     void saveSettings({ onboarding_done: true });
-    onClose();
+    setLeaving(true);
+    window.setTimeout(onClose, 320);
   }, [onClose, saveSettings]);
 
+  const go = useCallback((target: number) => {
+    const next = Math.max(0, Math.min(steps.length - 1, target));
+    setDirection(next >= index ? 'next' : 'prev');
+    setStep(steps[next]);
+  }, [index]);
+
+  const next = useCallback(() => (index === steps.length - 1 ? finish() : go(index + 1)), [finish, go, index]);
+
+  useEffect(() => { root.current?.focus(); }, []);
+
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') finish(); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { finish(); return; }
+      // Arrow keys move along the roadmap unless a field or a control that uses them has the focus.
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="tablist"], [role="radiogroup"], [role="listbox"], [role="menu"]')) return;
+      if (event.key === 'ArrowRight') next();
+      if (event.key === 'ArrowLeft') go(index - 1);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [finish]);
-
-  const next = () => (index === steps.length - 1 ? finish() : setStep(steps[index + 1]));
-  const back = () => setStep(steps[Math.max(0, index - 1)]);
+  }, [finish, go, index, next]);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-background/60 backdrop-blur-md duration-500 animate-in fade-in sm:items-center sm:p-6"
+    <div ref={root} tabIndex={-1}
+      className={cn('fixed inset-0 z-[70] flex flex-col overflow-hidden bg-background outline-none transition-[opacity,filter] duration-300 ease-ds animate-in fade-in',
+        leaving && 'opacity-0 blur-sm')}
       role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-      <div className="ds-menu flex max-h-[100dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl shadow-2xl duration-500 ease-ds animate-in fade-in slide-in-from-bottom-4 sm:max-h-[min(860px,94vh)] sm:rounded-3xl">
-        {/* Step indicator */}
-        <div className="flex items-center gap-3 border-b px-5 py-3">
-          <ol className="flex flex-1 items-center gap-1.5" aria-label={t('onboarding.progress')}>
-            {steps.map((entry, position) => {
-              const Icon = stepIcons[entry];
-              return (
-                <li key={entry} className="flex flex-1 items-center gap-1.5">
-                  <button type="button" onClick={() => setStep(entry)} aria-current={entry === step ? 'step' : undefined} title={t(`onboarding.step_${entry}`)}
-                    className={cn('flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs transition-[background-color,color] duration-300',
-                      entry === step ? 'bg-primary text-primary-foreground' : position < index ? 'text-foreground hover:bg-accent' : 'text-muted-foreground hover:bg-accent')}>
-                    {position < index ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />}
-                    <span className={cn('hidden md:inline', entry !== step && 'md:hidden lg:inline')}>{t(`onboarding.step_${entry}`)}</span>
-                  </button>
-                  {position < steps.length - 1 && <span className={cn('h-px flex-1 transition-colors duration-500', position < index ? 'bg-foreground/50' : 'bg-border')} />}
-                </li>
-              );
-            })}
-          </ol>
-          {step !== 'done' && <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground" onClick={finish}>{t('onboarding.skip')}</Button>}
-        </div>
+      <AsciiField step={index} steps={steps.length} />
 
-        <div key={step} className="min-h-0 flex-1 overflow-y-auto px-5 py-6 duration-500 ease-ds animate-in fade-in slide-in-from-right-2 sm:px-8">
+      <header className="relative flex items-center justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
+        <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.01em]">
+          <span className="h-2 w-2 rounded-full bg-brand" aria-hidden="true" />Anamnesies
+        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground" aria-label={t('onboarding.stepOf', { current: index + 1, total: steps.length })}>
+            {String(index + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
+          </span>
+          {step !== 'done' && <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={finish}>{t('onboarding.skip')}</Button>}
+        </div>
+      </header>
+
+      <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div key={step} className={cn('mx-auto flex min-h-full w-full flex-col justify-center px-5 py-10 sm:px-8',
+          step === 'tour' ? 'max-w-3xl' : step === 'design' ? 'max-w-4xl' : 'max-w-2xl',
+          direction === 'next' ? 'onboarding-in-next' : 'onboarding-in-prev')}>
           {step === 'welcome' && <WelcomeStep />}
           {step === 'tour' && <TourStep />}
           {step === 'design' && <DesignStep />}
@@ -86,58 +106,83 @@ export function Walkthrough({ onClose }: { onClose: () => void }) {
           {step === 'telegram' && <TelegramStep />}
           {step === 'done' && <DoneStep onNavigate={finish} />}
         </div>
+      </main>
 
-        <div className="flex items-center justify-between gap-2 border-t px-5 py-3">
-          <Button variant="ghost" onClick={back} disabled={index === 0}><ArrowLeft />{t('onboarding.back')}</Button>
+      <footer className="relative shrink-0 pb-2 sm:pb-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-5 sm:px-8">
+          <Button variant="ghost" onClick={() => go(index - 1)} disabled={index === 0} className={cn(index === 0 && 'invisible')}><ArrowLeft />{t('onboarding.back')}</Button>
           <div className="flex items-center gap-2">
             {(step === 'mcp' || step === 'telegram') && <Button variant="ghost" className="text-muted-foreground" onClick={next}>{t('onboarding.later')}</Button>}
-            <Button onClick={next}>
+            <Button size="lg" onClick={next}>
               {step === 'welcome' ? t('onboarding.start') : step === 'done' ? t('onboarding.finish') : t('onboarding.next')}
               {step !== 'done' && <ArrowRight />}
             </Button>
           </div>
         </div>
-      </div>
+        <Roadmap labels={steps.map((entry) => t(`onboarding.step_${entry}`))} current={index} onSelect={go} label={t('onboarding.progress')} />
+      </footer>
     </div>
   );
 }
 
-function StepHeader({ title, description, id }: { title: string; description: string; id?: string }) {
+function StepHeader({ title, lead }: { title: string; lead: string }) {
   return (
-    <div className="mb-6 space-y-1.5">
-      <h2 id={id} className="text-2xl font-semibold tracking-[-0.02em]">{title}</h2>
-      <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+    <div className="mb-8 space-y-2">
+      <h2 id="onboarding-title" className="intro-rise text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[40px]">{title}</h2>
+      <p className="intro-rise text-[15px] text-muted-foreground" style={d(120)}>{lead}</p>
     </div>
   );
+}
+
+/** Needle directions of the compass: tip offset (column, row) and its character, clockwise from north. */
+const needle: [number, number, string][] = [[0, -1, '^'], [2, -1, '/'], [2, 0, '>'], [2, 1, '\\'], [0, 1, 'v'], [-2, 1, '/'], [-2, 0, '<'], [-2, -1, '\\']];
+/** Needle positions over time: two full turns that slow down, then a small wobble around north. */
+const spin = [...Array.from({ length: needle.length * 2 }, (_, index) => index), 0, 1, 0, 7, 0];
+
+/** An ASCII compass whose needle spins and then settles on north: the start of the journey. */
+function AsciiCompass() {
+  const [frame, setFrame] = useState(spin.length - 1);
+  useEffect(() => {
+    const reduced = document.documentElement.dataset.motion === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    let count = 0;
+    let timer = 0;
+    const tick = () => {
+      setFrame(count);
+      count += 1;
+      if (count < spin.length) timer = window.setTimeout(tick, 45 + Math.pow(count / spin.length, 3) * 320);
+    };
+    timer = window.setTimeout(tick, 200);
+    return () => window.clearTimeout(timer);
+  }, []);
+  const [dx, dy, tip] = needle[spin[frame] % needle.length];
+  const grid = [
+    '      N      ',
+    '   .     .   ',
+    '             ',
+    'W  -     -  E',
+    '             ',
+    "   '     '   ",
+    '      S      ',
+  ].map((line) => line.split(''));
+  grid[3][6] = 'o';
+  grid[3 + dy][6 + dx] = tip;
+  grid[3 - dy][6 - dx] = '.';
+  return <pre className="intro-rise mb-8 font-mono text-[12px] leading-[1.15] text-brand" aria-hidden="true">{grid.map((line) => line.join('')).join('\n')}</pre>;
 }
 
 function WelcomeStep() {
   const { t, language, setLanguage } = useI18n();
   const { saveSettings } = useWorkspace();
-  const points: { icon: typeof Sparkles; key: 'welcomePoint1' | 'welcomePoint2' | 'welcomePoint3' }[] = [
-    { icon: FolderTree, key: 'welcomePoint1' }, { icon: Bot, key: 'welcomePoint2' }, { icon: Send, key: 'welcomePoint3' },
-  ];
   return (
-    <div className="flex flex-col items-center py-4 text-center sm:py-8">
-      <span className="relative mb-6 flex h-20 w-20 items-center justify-center">
-        <span className="intro-glow absolute inset-0 rounded-full bg-brand/30 blur-2xl" />
-        <span className="intro-pop relative flex h-16 w-16 items-center justify-center rounded-[22px] bg-primary text-primary-foreground shadow-lg"><Sparkles className="h-7 w-7" strokeWidth={1.6} /></span>
-      </span>
-      <h2 id="onboarding-title" className="intro-rise text-[32px] font-semibold leading-tight tracking-[-0.03em]" style={{ '--d': '150ms' } as React.CSSProperties}>{t('onboarding.welcomeTitle')}</h2>
-      <p className="intro-rise mt-3 max-w-lg text-[15px] leading-relaxed text-muted-foreground" style={{ '--d': '300ms' } as React.CSSProperties}>{t('onboarding.welcomeText')}</p>
-      <div className="mt-8 grid w-full max-w-xl gap-2 sm:grid-cols-3">
-        {points.map(({ icon: Icon, key }, position) => (
-          <div key={key} className="intro-rise rounded-2xl bg-muted/70 p-4 text-left" style={{ '--d': `${450 + position * 120}ms` } as React.CSSProperties}>
-            <Icon className="mb-2 h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
-            <p className="text-[13px] leading-snug">{t(`onboarding.${key}`)}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-8 flex items-center gap-3 text-sm text-muted-foreground">
-        <span>{t('settings.language')}</span>
+    <div className="flex flex-col items-center text-center">
+      <AsciiCompass />
+      <h2 id="onboarding-title" className="intro-rise text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[56px]" style={d(120)}>{t('onboarding.welcomeTitle')}</h2>
+      <p className="intro-rise mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground sm:text-base" style={d(260)}>{t('onboarding.welcomeLead')}</p>
+      <div className="intro-rise mt-10" style={d(420)}>
         <Select value={language} onValueChange={(value) => { setLanguage(value as Language); void saveSettings({ language: value as Language }); }}>
-          <SelectTrigger className="w-48" aria-label={t('settings.language')}><SelectValue /></SelectTrigger>
-          <SelectContent>
+          <SelectTrigger className="w-52" aria-label={t('settings.language')}><SelectValue /></SelectTrigger>
+          <SelectContent className="z-[80]">
             {languages.map((entry) => <SelectItem key={entry.code} value={entry.code} lang={entry.code}>{entry.flag} {entry.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -150,8 +195,8 @@ function TourStep() {
   const { t } = useI18n();
   return (
     <>
-      <StepHeader title={t('onboarding.tourTitle')} description={t('onboarding.tourText')} id="onboarding-title" />
-      <FeatureReel />
+      <StepHeader title={t('onboarding.tourTitle')} lead={t('onboarding.tourLead')} />
+      <div className="intro-rise" style={d(220)}><FeatureReel /></div>
     </>
   );
 }
@@ -175,57 +220,84 @@ function DesignStep() {
 
   return (
     <>
-      <StepHeader title={t('onboarding.designTitle')} description={t('onboarding.designText')} id="onboarding-title" />
-      <div className="space-y-7">
-        <Option title={t('appearance.theme')}>
-          <div className="grid max-w-md grid-cols-3 gap-2.5" role="radiogroup" aria-label={t('appearance.theme')}>
-            {themes.map(({ value: option, label, icon: Icon }) => (
-              <button key={option} type="button" role="radio" aria-checked={theme === option}
-                onClick={() => { setTheme(option); void saveSettings({ theme: option }); }}
-                className={cn('flex flex-col items-center gap-2 rounded-2xl p-4 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds',
-                  theme === option ? 'bg-seg font-medium shadow-sm ring-1 ring-foreground/20' : 'bg-muted hover:bg-accent')}>
-                <Icon className="h-5 w-5" strokeWidth={1.6} />{label}
-              </button>
-            ))}
-          </div>
-        </Option>
+      <StepHeader title={t('onboarding.designTitle')} lead={t('onboarding.designLead')} />
+      <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="space-y-6">
+          <Option title={t('appearance.theme')} delay={180}>
+            <div className="grid max-w-sm grid-cols-3 gap-2" role="radiogroup" aria-label={t('appearance.theme')}>
+              {themes.map(({ value: option, label, icon: Icon }) => (
+                <button key={option} type="button" role="radio" aria-checked={theme === option}
+                  onClick={() => { setTheme(option); void saveSettings({ theme: option }); }}
+                  className={cn('flex flex-col items-center gap-2 rounded-2xl p-3.5 text-[13px] transition-[background-color,box-shadow] duration-500 ease-ds',
+                    theme === option ? 'bg-seg font-medium shadow-sm ring-1 ring-foreground/20' : 'bg-muted hover:bg-accent')}>
+                  <Icon className="h-5 w-5" strokeWidth={1.6} />{label}
+                </button>
+              ))}
+            </div>
+          </Option>
 
-        <Option title={t('appearance.accent')} description={t('appearance.accentDesc')}>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('appearance.accent')}>
-            {(Object.keys(accents) as Accent[]).map((accent) => (
-              <button key={accent} type="button" role="radio" aria-checked={value.accent === accent} onClick={() => set({ accent })}
-                title={t(`appearance.accent_${accent}`)} aria-label={t(`appearance.accent_${accent}`)}
-                className={cn('flex h-10 w-10 items-center justify-center rounded-full border-2 transition-[border-color,transform] duration-200 hover:scale-105', value.accent === accent ? 'border-foreground' : 'border-transparent')}
-                style={{ background: `hsl(${accents[accent].light})` }}>
-                {value.accent === accent && <Check className={cn('h-4 w-4', accent === 'mono' ? 'text-background' : 'text-white')} />}
-              </button>
-            ))}
-          </div>
-        </Option>
+          <Option title={t('appearance.accent')} delay={260}>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('appearance.accent')}>
+              {(Object.keys(accents) as Accent[]).map((accent) => (
+                <button key={accent} type="button" role="radio" aria-checked={value.accent === accent} onClick={() => set({ accent })}
+                  title={t(`appearance.accent_${accent}`)} aria-label={t(`appearance.accent_${accent}`)}
+                  className={cn('flex h-9 w-9 items-center justify-center rounded-full border-2 transition-[border-color,transform] duration-200 hover:scale-105', value.accent === accent ? 'border-foreground' : 'border-transparent')}
+                  style={{ background: `hsl(${accents[accent].light})` }}>
+                  {value.accent === accent && <Check className={cn('h-4 w-4', accent === 'mono' ? 'text-background' : 'text-white')} />}
+                </button>
+              ))}
+            </div>
+          </Option>
 
-        <Option title={t('ambient.title')} description={t('ambient.description')}>
-          <Segmented value={value.ambient} label={t('ambient.title')} onChange={(ambient: Ambient) => set({ ambient })}
-            options={ambients.map((option) => ({ value: option, label: t(`ambient.${option}`) }))} />
-        </Option>
+          <Option title={t('ambient.title')} delay={340}>
+            <Segmented value={value.ambient} label={t('ambient.title')} onChange={(ambient: Ambient) => set({ ambient })}
+              options={ambients.map((option) => ({ value: option, label: t(`ambient.${option}`) }))} />
+          </Option>
 
-        <Option title={t('appearance.density')}>
-          <Segmented value={value.density} label={t('appearance.density')} onChange={(density) => set({ density })}
-            options={[{ value: 'compact', label: t('appearance.compact') }, { value: 'comfortable', label: t('appearance.comfortable') }]} />
-        </Option>
-
-        <p className="text-xs text-muted-foreground">{t('onboarding.designMore')}</p>
+          <Option title={t('appearance.density')} delay={420}>
+            <Segmented value={value.density} label={t('appearance.density')} onChange={(density) => set({ density })}
+              options={[{ value: 'compact', label: t('appearance.compact') }, { value: 'comfortable', label: t('appearance.comfortable') }]} />
+          </Option>
+        </div>
+        <div className="intro-rise hidden lg:block" style={d(300)}><DesignPreview density={value.density} /></div>
       </div>
     </>
   );
 }
 
-function Option({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+/** A miniature workspace that shows the chosen theme, accent and density right away. */
+function DesignPreview({ density }: { density: Appearance['density'] }) {
+  const rows = [0.72, 0.5, 0.86, 0.6];
   return (
-    <div className="space-y-2.5">
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        {description && <p className="text-xs text-muted-foreground">{description}</p>}
+    <div className="ds-panel overflow-hidden p-0" aria-hidden="true">
+      <div className="flex items-center gap-1.5 border-b px-4 py-3">
+        {[0, 1, 2].map((dot) => <span key={dot} className="h-2 w-2 rounded-full bg-foreground/15" />)}
       </div>
+      <div className="flex">
+        <div className="w-24 space-y-2 border-r p-3">
+          {[0.9, 0.6, 0.75, 0.5].map((width, position) => (
+            <span key={position} className={cn('block h-2 rounded-full', position === 0 ? 'bg-brand' : 'bg-foreground/10')} style={{ width: `${width * 100}%` }} />
+          ))}
+        </div>
+        <div className={cn('flex-1 p-4 transition-[gap] duration-500', density === 'compact' ? 'space-y-1.5' : 'space-y-3')}>
+          <span className="mb-2 block h-3 w-2/5 rounded-full bg-foreground/80" />
+          {rows.map((width, position) => (
+            <div key={position} className={cn('flex items-center gap-2.5 rounded-xl bg-muted px-3 transition-[padding] duration-500', density === 'compact' ? 'py-1.5' : 'py-2.5')}>
+              <span className={cn('h-3 w-3 shrink-0 rounded-full border-[1.5px]', position === 1 ? 'border-brand bg-brand' : 'border-foreground/25')} />
+              <span className="h-2 rounded-full bg-foreground/15" style={{ width: `${width * 100}%` }} />
+            </div>
+          ))}
+          <span className="mt-2 inline-flex h-6 w-24 rounded-full bg-brand" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Option({ title, delay, children }: { title: string; delay: number; children: ReactNode }) {
+  return (
+    <div className="intro-rise space-y-2.5" style={d(delay)}>
+      <p className="text-[13px] font-medium">{title}</p>
       {children}
     </div>
   );
@@ -244,16 +316,18 @@ function McpStep() {
 
   return (
     <>
-      <StepHeader title={t('onboarding.mcpTitle')} description={t('onboarding.mcpText')} id="onboarding-title" />
-      <div className="mb-6 grid gap-2 sm:grid-cols-3">
+      <StepHeader title={t('onboarding.mcpTitle')} lead={t('onboarding.mcpLead')} />
+      <div className="mb-8 flex flex-wrap gap-2">
         {(['mcpExample1', 'mcpExample2', 'mcpExample3'] as const).map((key, position) => (
-          <p key={key} className="intro-rise rounded-2xl bg-muted/70 px-3.5 py-3 text-[13px] italic leading-snug" style={{ '--d': `${position * 120}ms` } as React.CSSProperties}>„{t(`onboarding.${key}`)}“</p>
+          <span key={key} className="intro-rise ds-glass rounded-full px-3.5 py-1.5 text-[13px]" style={d(200 + position * 110)}>
+            <span className="mr-1.5 font-mono text-brand">&gt;</span>{t(`onboarding.${key}`)}
+          </span>
         ))}
       </div>
 
       {!settings.mcp_enabled && <p role="alert" className="mb-4 rounded-2xl bg-warning/10 px-4 py-3 text-[13px]">{t('assistant.disabled')}</p>}
 
-      <Tabs defaultValue="claudeCode">
+      <Tabs defaultValue="claudeCode" className="intro-rise" style={d(480)}>
         <TabsList>{clients.map((client) => <TabsTrigger key={client.value} value={client.value}>{client.label}</TabsTrigger>)}</TabsList>
         {clients.map((client) => (
           <TabsContent key={client.value} value={client.value} className="space-y-2.5">
@@ -266,11 +340,10 @@ function McpStep() {
         ))}
       </Tabs>
 
-      <div className="mt-5 space-y-1.5 text-xs text-muted-foreground">
-        <p>{t('onboarding.mcpToken')}</p>
-        <p>{t('onboarding.mcpRemote')}</p>
+      <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{t('onboarding.mcpToken')}</span>
         <Link href="/ai-assistant" className="inline-flex items-center gap-1 font-medium text-foreground hover:underline">{t('onboarding.mcpPage')}<ArrowRight className="h-3 w-3" /></Link>
-      </div>
+      </p>
     </>
   );
 }
@@ -313,12 +386,12 @@ function TelegramStep() {
 
   return (
     <>
-      <StepHeader title={t('onboarding.telegramTitle')} description={t('onboarding.telegramText')} id="onboarding-title" />
+      <StepHeader title={t('onboarding.telegramTitle')} lead={t('onboarding.telegramLead')} />
       {!telegram ? (
         <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
       ) : (
-        <ol className="space-y-5">
-          <TgStep number={1} done={telegram.token_set} title={t('onboarding.tgCreate')}>
+        <ol className="space-y-6">
+          <TgStep number={1} done={telegram.token_set} title={t('onboarding.tgCreate')} delay={200}>
             <ol className="list-decimal space-y-1 pl-4 text-[13px] text-muted-foreground marker:text-foreground/50">
               <li>{t('onboarding.tgCreate1')}</li>
               <li>{t('onboarding.tgCreate2')}</li>
@@ -327,7 +400,7 @@ function TelegramStep() {
             <Button variant="outline" size="sm" asChild><a href="https://t.me/BotFather" target="_blank" rel="noreferrer noopener"><ExternalLink />{t('settings.openBotFather')}</a></Button>
           </TgStep>
 
-          <TgStep number={2} done={telegram.token_set} title={t('onboarding.tgToken')}>
+          <TgStep number={2} done={telegram.token_set} title={t('onboarding.tgToken')} delay={320}>
             {telegram.token_set ? (
               <Badge variant="secondary" className="gap-1.5 py-1"><Bot className="h-3.5 w-3.5" />@{telegram.bot_username}</Badge>
             ) : (
@@ -339,7 +412,7 @@ function TelegramStep() {
             )}
           </TgStep>
 
-          <TgStep number={3} done={telegram.linked} disabled={!telegram.token_set} title={t('onboarding.tgLink')} last>
+          <TgStep number={3} done={telegram.linked} disabled={!telegram.token_set} title={t('onboarding.tgLink')} delay={440} last>
             {telegram.linked ? (
               <p className="flex items-center gap-2 text-[13px] font-medium"><CheckCircle2 className="h-4 w-4 text-success" />{t('settings.linkedTo', { name: telegram.chat_name ?? 'Telegram' })}</p>
             ) : (
@@ -358,16 +431,15 @@ function TelegramStep() {
           </TgStep>
         </ol>
       )}
-      <p className="mt-6 text-xs text-muted-foreground">{t('onboarding.tgLater')}</p>
     </>
   );
 }
 
-function TgStep({ number, title, done, disabled, last, children }: { number: number; title: string; done: boolean; disabled?: boolean; last?: boolean; children: ReactNode }) {
+function TgStep({ number, title, done, disabled, last, delay, children }: { number: number; title: string; done: boolean; disabled?: boolean; last?: boolean; delay: number; children: ReactNode }) {
   return (
-    <li className={cn('relative flex gap-4', disabled && 'opacity-50')}>
-      {!last && <span className="absolute left-[13px] top-8 h-[calc(100%-0.75rem)] w-px bg-border" aria-hidden="true" />}
-      <span className={cn('relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-300', done ? 'bg-success text-white' : 'ds-glass')}>
+    <li className={cn('intro-rise relative flex gap-4', disabled && 'opacity-50')} style={d(delay)}>
+      {!last && <span className="absolute left-[13px] top-8 h-[calc(100%-0.5rem)] w-px border-l border-dashed border-foreground/20" aria-hidden="true" />}
+      <span className={cn('relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs transition-colors duration-300', done ? 'bg-brand text-background' : 'ds-glass')}>
         {done ? <Check className="h-4 w-4 duration-300 animate-in zoom-in-50" /> : number}
       </span>
       <div className="min-w-0 flex-1 space-y-2.5 pt-0.5">
@@ -386,21 +458,29 @@ function DoneStep({ onNavigate }: { onNavigate: () => void }) {
     { href: '/focus', icon: Pin, title: t('nav.focus'), text: t('onboarding.doneFocus') },
   ];
   return (
-    <div className="flex flex-col items-center py-4 text-center sm:py-6">
-      <span className="intro-pop mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success text-white shadow-lg"><Check className="h-7 w-7" /></span>
-      <h2 id="onboarding-title" className="text-[28px] font-semibold tracking-[-0.02em]">{t('onboarding.doneTitle')}</h2>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{t('onboarding.doneText')}</p>
-      <div className="mt-8 grid w-full max-w-xl gap-2 sm:grid-cols-3">
+    <div className="flex flex-col items-center text-center">
+      <pre className="intro-pop mb-6 font-mono text-[13px] leading-[1.2] text-brand" aria-hidden="true">{treasure}</pre>
+      <h2 id="onboarding-title" className="intro-rise text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[52px]" style={d(120)}>{t('onboarding.doneTitle')}</h2>
+      <p className="intro-rise mt-3 max-w-md text-[15px] text-muted-foreground" style={d(240)}>{t('onboarding.doneLead')}</p>
+      <div className="mt-10 grid w-full max-w-xl gap-2 sm:grid-cols-3">
         {links.map(({ href, icon: Icon, title, text }, position) => (
-          <Link key={href} href={href} onClick={onNavigate} className="intro-rise rounded-2xl bg-muted/70 p-4 text-left transition-colors duration-300 hover:bg-accent"
-            style={{ '--d': `${200 + position * 120}ms` } as React.CSSProperties}>
-            <Icon className="mb-2 h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+          <Link key={href} href={href} onClick={onNavigate} className="intro-rise group rounded-2xl bg-muted/70 p-4 text-left transition-colors duration-300 hover:bg-accent"
+            style={d(360 + position * 110)}>
+            <Icon className="mb-2 h-4 w-4 text-muted-foreground transition-colors group-hover:text-brand" strokeWidth={1.6} />
             <p className="text-[13px] font-medium">{title}</p>
             <p className="mt-0.5 text-xs text-muted-foreground">{text}</p>
           </Link>
         ))}
       </div>
-      <p className="mt-6 text-xs text-muted-foreground">{t('onboarding.doneRestart')}</p>
     </div>
   );
 }
+
+/** The end of the trail: x marks the spot. */
+const treasure = [
+  ' .  *  . ',
+  '*  \\ /  *',
+  '    X    ',
+  '*  / \\  *',
+  " '  *  ' ",
+].join('\n');

@@ -346,5 +346,12 @@ export const ja: Dictionary = {
     doneTitle: '準備完了', doneText: 'ワークスペースの準備ができました。おすすめの出発点：', doneToday: '今日と今後数日の期限', doneExplorer: 'メモ、ドキュメント、ファイル',
     doneFocus: '最も重要なプロジェクトとリスト', doneRestart: 'ツアーは「設定 → 一般」からいつでも再開できます。', restartTitle: 'ツアー',
     restartDesc: 'ツアー、デザイン、MCP、Telegram を含むウェルカムをもう一度見る', restart: 'もう一度はじめる',
+    welcomeLead: "プロジェクト、タスク、メモ、ナレッジを一か所に。あなたのPCで動きます。",
+    tourLead: "6つのシーン、1分間。",
+    designLead: "色と雰囲気。いつでも変更できます。",
+    mcpLead: "一度つなげば、あとはひと言で。",
+    telegramLead: "外出先でもタスクとリマインダーを。設定は約1分です。",
+    doneLead: "ワークスペースの準備ができました。どこから始めますか？",
+    stepOf: "ステップ {current} / {total}",
   },
 };

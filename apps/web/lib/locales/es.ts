@@ -395,5 +395,12 @@ export const es: Dictionary = {
     doneExplorer: 'Notas, documentos y archivos', doneFocus: 'Tus proyectos y listas más importantes',
     doneRestart: 'Puedes reiniciar el recorrido cuando quieras en Ajustes → General.', restartTitle: 'Recorrido',
     restartDesc: 'Ver de nuevo la bienvenida con recorrido, diseño, MCP y Telegram', restart: 'Empezar de nuevo',
+    welcomeLead: "Proyectos, tareas, notas y conocimiento: en un solo lugar, en tu equipo.",
+    tourLead: "Seis escenas, un minuto.",
+    designLead: "Color y ambiente: cámbialo cuando quieras.",
+    mcpLead: "Conecta una vez y después basta una frase.",
+    telegramLead: "Tareas y recordatorios sobre la marcha, en un minuto.",
+    doneLead: "Tu espacio de trabajo está listo. ¿Por dónde quieres empezar?",
+    stepOf: "Paso {current} de {total}",
   },
 };

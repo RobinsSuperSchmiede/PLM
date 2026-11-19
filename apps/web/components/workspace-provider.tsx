@@ -121,11 +121,16 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setData(dataRef.current);
   }, []);
 
+  // next-themes hands out a new setTheme after every theme change. Through a ref, applySettings stays stable;
+  // otherwise the startup effect below re-ran on each change and re-applied the cached (old) theme in a loop.
+  const setThemeRef = useRef(setTheme);
+  useEffect(() => { setThemeRef.current = setTheme; }, [setTheme]);
+
   const applySettings = useCallback((next: AppSettings) => {
     setSettings(next);
     setLanguage(next.language);
-    setTheme(next.theme);
-  }, [setLanguage, setTheme]);
+    setThemeRef.current(next.theme);
+  }, [setLanguage]);
 
   const reloadOrganization = useCallback(async () => {
     const [loadedTags, loadedAssignments, loadedLinks] = await Promise.all([
