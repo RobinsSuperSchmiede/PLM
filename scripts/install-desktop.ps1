@@ -24,7 +24,7 @@
 param(
     [switch]$Uninstall,
     [switch]$Start,
-    [string]$OpenShellVersion = "v0.2.0",
+    [string]$OpenShellVersion = "v0.2.1",
     [string]$OpenShellDir,
     [string]$ProgramDir = (Join-Path $env:LOCALAPPDATA "Programs\Anamnesies")
 )
