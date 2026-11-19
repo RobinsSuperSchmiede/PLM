@@ -66,6 +66,15 @@ Demo data never sends Telegram messages: its reminders are already done and its 
 - Every area (projects, tasks, calendar, meetings, notes, lists, ideas, knowledge, records) is stored in the database via the FastAPI REST API. Tables are created on API startup.
 - The browser talks only to the web app: `/api/v1/*` is proxied to the API with the session token of the signed-in account.
 
+## First-run walkthrough
+
+On the first start a full-screen walkthrough sets up the essentials in six steps: welcome and language, a short animated tour, design (theme, accent color, background animation, density, with a live preview), MCP for Claude and other assistants, the Telegram bot, and a last page with starting points.
+
+- An animated ASCII contour map runs in the background and moves on with every step. A curved roadmap along the bottom marks the steps: a marker travels the trail to the current one, and clicking a station jumps there. The arrow keys move back and forth, `Esc` closes the walkthrough.
+- MCP and Telegram can be skipped with "Later" and set up afterwards in the settings. Finishing or skipping stores `onboarding_done`, so the walkthrough appears once per workspace. Settings → General → Walkthrough starts it again.
+- With "reduce motion" (system setting or Settings → Appearance) the background stands still and the marker jumps instead of travelling.
+- Code: `apps/web/components/onboarding/` (`walkthrough.tsx`, `roadmap.tsx`, `ascii-field.tsx`, `feature-reel.tsx`).
+
 ## Accounts and sign-in
 
 - `AUTH_MODE=multi` (default): sign-in with username and password. On the first start the web app asks you to create the admin account; it takes over the existing data (the database from `DATABASE_URL`).
