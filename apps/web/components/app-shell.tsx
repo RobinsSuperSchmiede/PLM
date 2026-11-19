@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { titleBarProps, useDesktopWindow, WindowControls } from '@/components/desktop-window';
 import { TelegramMenu } from '@/components/quick-capture';
+import { clamp, ResizeHandle } from '@/components/resize-handle';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
 import { onboardingEvent } from '@/lib/onboarding';
@@ -36,6 +37,11 @@ const fullBleed = ['/explorer', '/docs', '/database'];
 const isActive = (pathname: string, href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
 const pinnedStorageKey = 'anamnesies.sidebarPinned';
+const widthStorageKey = 'anamnesies.sidebarWidth';
+/** Width of the open navigation panel: default and the range its edge can be dragged in. */
+const SIDEBAR_WIDTH = 248;
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 440;
 
 // The command palette is loaded the first time it opens.
 const GlobalSearch = dynamic(() => import('@/components/global-search').then((module) => module.GlobalSearch), { ssr: false });
@@ -52,6 +58,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data, error, reload, settings } = useWorkspace();
   const [onboarding, setOnboarding] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_WIDTH);
+  const resizeStart = useRef(SIDEBAR_WIDTH);
   const [hovered, setHovered] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -67,7 +75,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setModifier(/Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘' : 'Ctrl');
-    try { setPinned(window.localStorage.getItem(pinnedStorageKey) === 'true'); } catch { /* storage unavailable */ }
+    try {
+      setPinned(window.localStorage.getItem(pinnedStorageKey) === 'true');
+      const width = Number(window.localStorage.getItem(widthStorageKey));
+      if (width) setSidebarWidth(clamp(width, SIDEBAR_MIN, SIDEBAR_MAX));
+    } catch { /* storage unavailable */ }
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -117,6 +129,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Opens with a short delay so passing the mouse over the rail does not flash the panel.
   const hover = (value: boolean) => {
+    // Dragging the panel's edge can leave the panel for a moment; it stays open meanwhile.
+    if (!value && document.body.dataset.resizing) return;
     window.clearTimeout(hoverTimer.current);
     hoverTimer.current = window.setTimeout(() => setHovered(value), value ? 90 : 180);
   };
@@ -175,7 +189,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen" style={{ '--titlebar-inset': desktop?.os === 'macos' ? '72px' : '0px' } as React.CSSProperties}>
+    <div className="min-h-screen" style={{ '--titlebar-inset': desktop?.os === 'macos' ? '72px' : '0px', '--sidebar-w': `${sidebarWidth}px` } as React.CSSProperties}>
       <AmbientBackground />
       {/* Brand: plain text, always top left – also inside the opened navigation panel. In the desktop
           app on macOS it moves right of the window buttons (--titlebar-inset). */}
@@ -187,8 +201,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           desktop app it is the window's title bar: its free space moves the window. */}
       <header {...titleBarProps(desktop)}
         className={cn('fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[calc(120px+var(--titlebar-inset))] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4',
-          desktop ? 'select-none' : 'pointer-events-none', pinned && 'lg:pl-[calc(284px+var(--titlebar-inset))]')}>
-        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? 284 : 120}px - var(--titlebar-inset))` }}>
+          desktop ? 'select-none' : 'pointer-events-none', pinned && 'lg:pl-[calc(var(--sidebar-w)+36px+var(--titlebar-inset))]')}>
+        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? sidebarWidth + 36 : 120}px - var(--titlebar-inset))` }}>
           <Suspense fallback={null}><Breadcrumbs /></Suspense>
         </div>
 
@@ -202,20 +216,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-auto flex items-center justify-end gap-1.5 sm:ml-auto">
           <TelegramMenu />
           <AccountMenu />
-          {desktop && <WindowControls win={desktop} className="ml-1.5" />}
+          {desktop && <WindowControls win={desktop} className="-mr-3 ml-1.5 self-start sm:-mr-4" />}
         </div>
       </header>
 
       {/* Desktop rail: free-standing icons; hover or the pin button opens the full panel. */}
       <nav aria-label="Navigation"
         className={cn('fixed inset-y-0 left-0 z-40 hidden flex-col overflow-hidden pt-14 transition-[width,background-color,box-shadow] duration-700 ease-ds lg:flex',
-          expanded ? 'ds-menu w-[248px]' : 'w-[56px] bg-transparent shadow-none')}
+          expanded ? 'ds-menu' : 'bg-transparent shadow-none')}
+        style={{ width: expanded ? sidebarWidth : 56 }}
         onMouseEnter={() => hover(true)} onMouseLeave={() => hover(false)}
         onFocusCapture={() => hover(true)}
         onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hover(false); }}>
         <div className="no-scrollbar h-full overflow-y-auto overflow-x-hidden px-3 pb-3 pt-0.5">
           {navList(expanded, true)}
         </div>
+        {/* The open panel's right edge sets its width. */}
+        {expanded && (
+          <ResizeHandle className="right-0"
+            onResizeStart={() => { resizeStart.current = sidebarWidth; }}
+            onResize={(delta) => setSidebarWidth(clamp(resizeStart.current + delta, SIDEBAR_MIN, SIDEBAR_MAX))}
+            onResizeEnd={() => setSidebarWidth((width) => { try { window.localStorage.setItem(widthStorageKey, String(width)); } catch { /* storage unavailable */ } return width; })}
+            onReset={() => { setSidebarWidth(SIDEBAR_WIDTH); try { window.localStorage.removeItem(widthStorageKey); } catch { /* storage unavailable */ } }} />
+        )}
       </nav>
 
       {mobileOpen && (
@@ -227,7 +250,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <div className={cn('pt-14 transition-[padding] duration-700 ease-ds', pinned ? 'lg:pl-[248px]' : 'lg:pl-[56px]')}>
+      <div className={cn('pt-14 transition-[padding] duration-700 ease-ds', pinned ? 'lg:pl-[var(--sidebar-w)]' : 'lg:pl-[56px]')}>
         <main className={cn('w-full pb-24 lg:pb-0', fullBleed.some((href) => isActive(pathname, href)) ? 'min-h-0' : 'mx-auto max-w-[1800px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8 2xl:px-14')}>
           {error && (
             <div role="alert" className="ds-menu mb-6 flex flex-col gap-3 rounded-[16px] px-3.5 py-[11px] text-[13px] animate-in fade-in slide-in-from-top-2 sm:flex-row sm:items-center">

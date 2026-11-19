@@ -223,7 +223,7 @@ export const es: Dictionary = {
     file: 'Archivo', tag: 'Etiqueta',
   },
   ui: {
-    home: 'Inicio', breadcrumbs: 'Ruta de navegación', quickSend: 'Telegram', quickSendTitle: 'Captura rápida',
+    home: 'Inicio', breadcrumbs: 'Ruta de navegación', resize: 'Cambiar ancho', quickSend: 'Telegram', quickSendTitle: 'Captura rápida',
     quickSendDesc: 'Va directamente a tu chat de Telegram o al espacio de trabajo como entrada', quickSendPlaceholder: 'Mensaje, idea, tarea … #etiqueta @Proyecto',
     send: 'Enviar', sent: 'Enviado a Telegram', captured: '{type} guardado', captureAs: 'Acción', onlySend: 'Solo enviar a Telegram',
     alsoSend: 'Enviar también a Telegram', telegramConnected: 'Telegram conectado', telegramOffline: 'Telegram no conectado',
@@ -371,7 +371,7 @@ export const es: Dictionary = {
     scene_telegramDesc: 'Captura tareas y notas sobre la marcha por chat y recibe recordatorios y un resumen diario en el móvil.',
     scene_mcp: 'Agente de IA vía MCP', scene_mcpDesc: 'Claude y otros asistentes de IA leen y escriben directamente en tu espacio: notas, tareas, citas.',
     previous: 'Escena anterior', nextScene: 'Escena siguiente', play: 'Reproducir', pause: 'Pausa', replay: 'Reproducir de nuevo',
-    progress: 'Progreso del recorrido', step_welcome: 'Bienvenida', step_tour: 'Recorrido', step_design: 'Diseño', step_mcp: 'MCP', step_telegram: 'Telegram',
+    progress: 'Progreso del recorrido', step_account: 'Cuenta', step_welcome: 'Bienvenida', step_tour: 'Recorrido', step_design: 'Diseño', step_mcp: 'MCP', step_telegram: 'Telegram',
     step_done: 'Listo', skip: 'Omitir', back: 'Atrás', next: 'Siguiente', later: 'Más tarde', start: 'Empezar', finish: 'Ir al espacio de trabajo',
     welcomeTitle: 'Bienvenido a Anamnesies',
     welcomeText: 'Tu espacio de trabajo personal para proyectos, tareas, citas, notas y conocimiento: se ejecuta localmente y está conectado a la IA. Configuremos lo esencial en dos minutos.',

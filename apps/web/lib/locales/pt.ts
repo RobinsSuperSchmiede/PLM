@@ -222,7 +222,7 @@ export const pt: Dictionary = {
     file: 'Arquivo', tag: 'Tag',
   },
   ui: {
-    home: 'Início', breadcrumbs: 'Trilha de navegação', quickSend: 'Telegram', quickSendTitle: 'Captura rápida',
+    home: 'Início', breadcrumbs: 'Trilha de navegação', resize: 'Alterar largura', quickSend: 'Telegram', quickSendTitle: 'Captura rápida',
     quickSendDesc: 'Vai direto para o seu chat do Telegram ou para o espaço de trabalho como entrada', quickSendPlaceholder: 'Mensagem, ideia, tarefa … #tag @Projeto',
     send: 'Enviar', sent: 'Enviado ao Telegram', captured: '{type} salvo', captureAs: 'Ação', onlySend: 'Só enviar ao Telegram',
     alsoSend: 'Também enviar ao Telegram', telegramConnected: 'Telegram conectado', telegramOffline: 'Telegram não conectado',
@@ -369,7 +369,7 @@ export const pt: Dictionary = {
     scene_telegramDesc: 'Registre tarefas e notas em movimento pelo chat e receba lembretes e um resumo diário no celular.',
     scene_mcp: 'Agente de IA via MCP', scene_mcpDesc: 'O Claude e outros assistentes de IA leem e escrevem direto no seu espaço – notas, tarefas, compromissos.',
     previous: 'Cena anterior', nextScene: 'Próxima cena', play: 'Reproduzir', pause: 'Pausar', replay: 'Reproduzir de novo', progress: 'Progresso do tour',
-    step_welcome: 'Boas-vindas', step_tour: 'Tour', step_design: 'Design', step_mcp: 'MCP', step_telegram: 'Telegram', step_done: 'Pronto', skip: 'Pular',
+    step_account: 'Conta', step_welcome: 'Boas-vindas', step_tour: 'Tour', step_design: 'Design', step_mcp: 'MCP', step_telegram: 'Telegram', step_done: 'Pronto', skip: 'Pular',
     back: 'Voltar', next: 'Próximo', later: 'Mais tarde', start: 'Começar', finish: 'Ir para o espaço de trabalho', welcomeTitle: 'Boas-vindas ao Anamnesies',
     welcomeText: 'Seu espaço de trabalho pessoal para projetos, tarefas, compromissos, notas e conhecimento – rodando localmente e conectado à IA. Vamos configurar o essencial em dois minutos.',
     welcomePoint1: 'Tudo em um só lugar: notas, tarefas, calendário e arquivos', welcomePoint2: 'O Claude e cia. trabalham direto no seu espaço via MCP',

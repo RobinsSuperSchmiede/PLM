@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 
 import { AuthGate } from '@/components/auth-gate';
 import { AppShell } from '@/components/app-shell';
+import { DesktopContextMenu } from '@/components/desktop-window';
 import { I18nProvider } from '@/components/i18n-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <AppShell>{children}</AppShell>
               </AuthGate>
               <Toaster position="bottom-right" />
+              <DesktopContextMenu />
             </TooltipProvider>
           </I18nProvider>
         </ThemeProvider>

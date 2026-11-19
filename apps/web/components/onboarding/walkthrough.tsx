@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DesktopTitleBar } from '@/components/desktop-window';
 import { AsciiField } from '@/components/onboarding/ascii-field';
 import { FeatureReel } from '@/components/onboarding/feature-reel';
 import { Roadmap } from '@/components/onboarding/roadmap';
@@ -23,12 +24,15 @@ import { useWorkspace } from '@/components/workspace-provider';
 import { api, ApiError } from '@/lib/api';
 import { type Accent, type Ambient, type Appearance, accents, ambients, defaultAppearance, loadAppearance, saveAppearance } from '@/lib/appearance';
 import { languages } from '@/lib/languages';
+import { type OnboardingStep, onboardingSteps } from '@/lib/onboarding';
 import { type McpClient, mcpSnippets } from '@/lib/mcp';
 import type { Language, TelegramSettings, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const steps = ['welcome', 'tour', 'design', 'mcp', 'telegram', 'done'] as const;
-type Step = typeof steps[number];
+const steps = onboardingSteps;
+type Step = OnboardingStep;
+/** The account already exists when the walkthrough runs: it starts at the second station. */
+const FIRST = 1;
 
 /** Delay for one animated element. */
 const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
@@ -54,7 +58,7 @@ export function Walkthrough({ onClose }: { onClose: () => void }) {
   }, [onClose, saveSettings]);
 
   const go = useCallback((target: number) => {
-    const next = Math.max(0, Math.min(steps.length - 1, target));
+    const next = Math.max(FIRST, Math.min(steps.length - 1, target));
     setDirection(next >= index ? 'next' : 'prev');
     setStep(steps[next]);
   }, [index]);
@@ -83,16 +87,9 @@ export function Walkthrough({ onClose }: { onClose: () => void }) {
       role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
       <AsciiField step={index} steps={steps.length} />
 
-      <header className="relative flex items-center justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
-        <span className="flex items-center gap-2 text-[13px] font-medium tracking-[-0.01em]">
-          <span className="h-2 w-2 rounded-full bg-brand" aria-hidden="true" />Anamnesies
-        </span>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[11px] tabular-nums text-muted-foreground" aria-label={t('onboarding.stepOf', { current: index + 1, total: steps.length })}>
-            {String(index + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
-          </span>
-          {step !== 'done' && <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={finish}>{t('onboarding.skip')}</Button>}
-        </div>
+      <DesktopTitleBar className="relative z-10" />
+      <header className="relative flex min-h-9 items-center justify-end gap-4 px-5 pt-4 sm:px-8 sm:pt-6">
+        {step !== 'done' && <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={finish}>{t('onboarding.skip')}</Button>}
       </header>
 
       <main className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -110,7 +107,7 @@ export function Walkthrough({ onClose }: { onClose: () => void }) {
 
       <footer className="relative shrink-0 pb-2 sm:pb-4">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-2 px-5 sm:px-8">
-          <Button variant="ghost" onClick={() => go(index - 1)} disabled={index === 0} className={cn(index === 0 && 'invisible')}><ArrowLeft />{t('onboarding.back')}</Button>
+          <Button variant="ghost" onClick={() => go(index - 1)} disabled={index <= FIRST} className={cn(index <= FIRST && 'invisible')}><ArrowLeft />{t('onboarding.back')}</Button>
           <div className="flex items-center gap-2">
             {(step === 'mcp' || step === 'telegram') && <Button variant="ghost" className="text-muted-foreground" onClick={next}>{t('onboarding.later')}</Button>}
             <Button size="lg" onClick={next}>
@@ -134,50 +131,12 @@ function StepHeader({ title, lead }: { title: string; lead: string }) {
   );
 }
 
-/** Needle directions of the compass: tip offset (column, row) and its character, clockwise from north. */
-const needle: [number, number, string][] = [[0, -1, '^'], [2, -1, '/'], [2, 0, '>'], [2, 1, '\\'], [0, 1, 'v'], [-2, 1, '/'], [-2, 0, '<'], [-2, -1, '\\']];
-/** Needle positions over time: two full turns that slow down, then a small wobble around north. */
-const spin = [...Array.from({ length: needle.length * 2 }, (_, index) => index), 0, 1, 0, 7, 0];
-
-/** An ASCII compass whose needle spins and then settles on north: the start of the journey. */
-function AsciiCompass() {
-  const [frame, setFrame] = useState(spin.length - 1);
-  useEffect(() => {
-    const reduced = document.documentElement.dataset.motion === 'reduced' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) return;
-    let count = 0;
-    let timer = 0;
-    const tick = () => {
-      setFrame(count);
-      count += 1;
-      if (count < spin.length) timer = window.setTimeout(tick, 45 + Math.pow(count / spin.length, 3) * 320);
-    };
-    timer = window.setTimeout(tick, 200);
-    return () => window.clearTimeout(timer);
-  }, []);
-  const [dx, dy, tip] = needle[spin[frame] % needle.length];
-  const grid = [
-    '      N      ',
-    '   .     .   ',
-    '             ',
-    'W  -     -  E',
-    '             ',
-    "   '     '   ",
-    '      S      ',
-  ].map((line) => line.split(''));
-  grid[3][6] = 'o';
-  grid[3 + dy][6 + dx] = tip;
-  grid[3 - dy][6 - dx] = '.';
-  return <pre className="intro-rise mb-8 font-mono text-[12px] leading-[1.15] text-brand" aria-hidden="true">{grid.map((line) => line.join('')).join('\n')}</pre>;
-}
-
 function WelcomeStep() {
   const { t, language, setLanguage } = useI18n();
   const { saveSettings } = useWorkspace();
   return (
     <div className="flex flex-col items-center text-center">
-      <AsciiCompass />
-      <h2 id="onboarding-title" className="intro-rise text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[56px]" style={d(120)}>{t('onboarding.welcomeTitle')}</h2>
+      <h2 id="onboarding-title" className="intro-rise text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] sm:text-[56px]">{t('onboarding.welcomeTitle')}</h2>
       <p className="intro-rise mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground sm:text-base" style={d(260)}>{t('onboarding.welcomeLead')}</p>
       <div className="intro-rise mt-10" style={d(420)}>
         <Select value={language} onValueChange={(value) => { setLanguage(value as Language); void saveSettings({ language: value as Language }); }}>

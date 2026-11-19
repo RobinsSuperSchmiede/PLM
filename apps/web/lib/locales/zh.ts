@@ -176,7 +176,7 @@ export const zh: Dictionary = {
   },
   entities: { note: '笔记', task: '任务', event: '日程', meeting: '会议', project: '项目', knowledge: '文档', idea: '想法', folder: '文件夹', file: '文件', tag: '标签' },
   ui: {
-    home: '首页', breadcrumbs: '面包屑导航', quickSend: 'Telegram', quickSendTitle: '快速记录', quickSendDesc: '直接发送到你的 Telegram 聊天，或作为条目存入工作区',
+    home: '首页', breadcrumbs: '面包屑导航', resize: '调整宽度', quickSend: 'Telegram', quickSendTitle: '快速记录', quickSendDesc: '直接发送到你的 Telegram 聊天，或作为条目存入工作区',
     quickSendPlaceholder: '消息、想法、任务… #标签 @项目', send: '发送', sent: '已发送到 Telegram', captured: '已保存{type}', captureAs: '操作',
     onlySend: '仅发送到 Telegram', alsoSend: '同时发送到 Telegram', telegramConnected: 'Telegram 已连接', telegramOffline: 'Telegram 未连接',
     telegramSetup: '设置 Telegram', shortcutHint: '{key} + Enter 发送',
@@ -295,7 +295,7 @@ export const zh: Dictionary = {
     scene_graphDesc: '关联条目和标签。关系图展示项目、笔记和会议之间的联系。', scene_telegram: '你的 Telegram 机器人',
     scene_telegramDesc: '随时通过聊天记录任务和笔记，并在手机上接收提醒和每日摘要。', scene_mcp: '通过 MCP 使用 AI 智能体',
     scene_mcpDesc: 'Claude 等 AI 助手可以直接在你的工作区中读写——笔记、任务、日程。', previous: '上一个场景', nextScene: '下一个场景', play: '播放',
-    pause: '暂停', replay: '重新播放', progress: '导览进度', step_welcome: '欢迎', step_tour: '导览', step_design: '设计', step_mcp: 'MCP', step_telegram: 'Telegram',
+    pause: '暂停', replay: '重新播放', progress: '导览进度', step_account: '账户', step_welcome: '欢迎', step_tour: '导览', step_design: '设计', step_mcp: 'MCP', step_telegram: 'Telegram',
     step_done: '完成', skip: '跳过', back: '返回', next: '下一步', later: '稍后', start: '开始', finish: '进入工作区', welcomeTitle: '欢迎使用 Anamnesies',
     welcomeText: '你的个人工作区，用于管理项目、任务、日程、笔记和知识——在本地运行并连接 AI。让我们用两分钟完成基本设置。',
     welcomePoint1: '一切尽在一处：笔记、任务、日历和文件', welcomePoint2: 'Claude 等助手通过 MCP 直接在你的工作区中工作', welcomePoint3: '你自己的 Telegram 机器人，外出时也能用',

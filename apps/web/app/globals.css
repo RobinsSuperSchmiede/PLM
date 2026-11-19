@@ -587,3 +587,7 @@ svg.lucide[stroke-width='2'] {
 .roadmap-halo { animation: roadmap-halo 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite; }
 .onboarding-in-next { animation: onboarding-in-next 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .onboarding-in-prev { animation: onboarding-in-prev 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* A pane edge is being dragged (components/resize-handle.tsx): follow the pointer without lag. */
+body[data-resizing] { cursor: col-resize !important; user-select: none !important; }
+body[data-resizing] * { transition: none !important; cursor: col-resize !important; }

@@ -31,6 +31,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
+import { clamp, ResizeHandle } from '@/components/resize-handle';
 import { DeleteButton, EmptyState, PageSkeleton, SearchInput } from '@/components/workspace-ui';
 import { VirtualList } from '@/components/virtual-list';
 import { useWorkspace } from '@/components/workspace-provider';
@@ -58,10 +59,17 @@ const viewLabels: Record<View, TranslationKey> = {
 /** The planning views also have a page of their own (board, calendar, ...). */
 const viewPages: Partial<Record<View, string>> = { tasks: '/tasks', projects: '/projects', meetings: '/meetings', events: '/calendar', ideas: '/ideas' };
 const UNFILED = 'unfiled';
+/** Key of a new folder or note that is still waiting for its name. */
+const DRAFT = 'draft';
 const NONE = 'none';
 const DRAG_TYPE = 'application/x-anamnesies';
 /** Set as well when a note is dragged: types (unlike the data) can be read during dragover. */
 const NOTE_DRAG_TYPE = 'application/x-anamnesies-note';
+/** Width of the explorer tree and share of the left note in the split view: defaults and limits. */
+const TREE_WIDTH = 248;
+const TREE_MIN = 180;
+const TREE_MAX = 520;
+const SPLIT_MIN = 0.2;
 
 function setDragPayload(event: React.DragEvent, payload: { kind: ItemKind | 'folder'; id: string }) {
   event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(payload));
@@ -163,6 +171,10 @@ function Workspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [treeOpen, setTreeOpen] = useStoredState('notes.explorer', true);
+  const [treeWidth, setTreeWidth] = useStoredState('notes.treeWidth', TREE_WIDTH);
+  const [splitRatio, setSplitRatio] = useStoredState('notes.splitRatio', 0.5);
+  // Starting point of a drag on a pane edge: tree width in pixels, or split share and container width.
+  const resizeFrom = useRef({ value: 0, width: 1 });
   // On phones the tree is a panel above the content that opens on demand.
   const [mobileTree, setMobileTree] = useState(false);
   const [tabs, setTabs] = useStoredState<string[]>('notes.tabs', []);
@@ -251,9 +263,9 @@ function Workspace() {
     else go({ id });
   }
 
-  async function createNote(folderId?: string | null) {
+  async function createNote(folderId?: string | null, title = '') {
     const folder = folderId !== undefined ? folderId : scope !== ALL && scope !== UNFILED ? scope : null;
-    const note = await create('notes', { title: '', content: '', folder_id: folder });
+    const note = await create('notes', { title, content: '', folder_id: folder });
     if (note) open(note.id);
   }
 
@@ -264,21 +276,32 @@ function Workspace() {
   // The stored list can hold an id twice (two windows writing it); every note gets one tab.
   const openTabs = [...new Set(tabs)].map((id) => data.notes.find((note) => note.id === id)).filter((note): note is Note => Boolean(note));
   const toggleTree = () => { if (window.innerWidth < 1024) setMobileTree((value) => !value); else setTreeOpen(!treeOpen); };
+  const ratio = clamp(splitRatio, SPLIT_MIN, 1 - SPLIT_MIN);
 
   return (
     <div className="flex flex-col lg:h-[calc(100vh-3.5rem)] lg:flex-row">
       {(treeOpen || mobileTree) && !focus && (
-        <aside className={cn('min-h-0 shrink-0 lg:h-full lg:w-[248px]', mobileTree ? 'duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden lg:block', !treeOpen && 'lg:hidden')}
+        <aside className={cn('relative min-h-0 shrink-0 lg:h-full lg:w-[var(--tree-w)]', mobileTree ? 'duration-200 animate-in fade-in slide-in-from-top-1' : 'hidden lg:block', !treeOpen && 'lg:hidden')}
+          style={{ '--tree-w': `${clamp(treeWidth, TREE_MIN, TREE_MAX)}px` } as React.CSSProperties}
           onClick={(event) => { if ((event.target as HTMLElement).closest('[data-tree-item]')) setMobileTree(false); }}>
           <Tree scope={scope} view={active ? null : view} openIds={[activeId, splitId]} onSelectView={(next) => go({ view: next, id: null })}
-            onSelectFolder={(folder) => go({ folder, id: null })} onCreateNote={(folderId) => void createNote(folderId)}
+            onSelectFolder={(folder) => go({ folder, id: null })} onCreateNote={(folderId, title) => void createNote(folderId, title)}
             onOpenNote={open} onOpenBeside={openBeside} onOpenDocument={setArticle} onOpenFile={setPreviewFile} />
+          <ResizeHandle className="-right-1 hidden lg:block"
+            onResizeStart={() => { resizeFrom.current = { value: clamp(treeWidth, TREE_MIN, TREE_MAX), width: 1 }; }}
+            onResize={(delta) => setTreeWidth(clamp(resizeFrom.current.value + delta, TREE_MIN, TREE_MAX))}
+            onReset={() => setTreeWidth(TREE_WIDTH)} />
         </aside>
       )}
 
       <section className={cn('flex min-h-[70vh] min-w-0 flex-1 flex-col lg:h-full lg:min-h-0', focus && 'fixed inset-0 z-50 bg-background duration-300 animate-in fade-in zoom-in-[0.99]')}>
         {openTabs.length > 0 && !focus && (
           <div className="flex shrink-0 items-center gap-1 overflow-x-auto px-4 pt-3 [scrollbar-width:none] lg:px-2" role="tablist" aria-label={t('explorer.tabs')}>
+            {/* With a note open the overview's toolbar is gone, so the tree toggle sits here. */}
+            {active && (
+              <Button variant="ghost" size="icon-sm" onClick={toggleTree} aria-label={t('explorer.toggle')} title={t('explorer.toggle')} aria-pressed={treeOpen}
+                className="shrink-0 text-muted-foreground"><PanelLeft /></Button>
+            )}
             <TabButton active={!active} onClick={() => go({ id: null })} icon={LayoutGrid} label={t('explorer.overview')} />
             {openTabs.map((note) => (
               <TabButton key={note.id} dragId={note.id} active={note.id === activeId} secondary={note.id === splitNote?.id} onClick={() => selectTab(note.id)} onClose={() => closeTab(note.id)}
@@ -289,7 +312,8 @@ function Workspace() {
         )}
 
         {active ? (
-          <SplitDropArea onDropNote={dropNote} className={cn('min-h-0 flex-1', splitNote ? 'flex flex-col lg:grid lg:grid-cols-2 lg:divide-x' : 'overflow-y-auto')}>
+          <SplitDropArea onDropNote={dropNote} className={cn('min-h-0 flex-1', splitNote ? 'flex flex-col lg:grid lg:divide-x' : 'overflow-y-auto')}
+            style={splitNote ? { gridTemplateColumns: `minmax(0,${ratio}fr) minmax(0,${1 - ratio}fr)` } : undefined}>
             <div className={cn(splitNote && 'min-h-[60vh] min-w-0 overflow-y-auto lg:min-h-0')}>
               <NoteEditor key={active.id} note={active} focus={focus} compact={Boolean(splitNote)} onToggleFocus={() => setFocus((value) => !value)} beforeClose={beforeClose}
                 actions={!splitNote && <SplitPicker activeId={active.id} tabIds={openTabs.map((note) => note.id)} onPick={openBeside} />}
@@ -299,6 +323,13 @@ function Workspace() {
                   go(splitNote ? { id: splitNote.id, split: null } : { id: null });
                 }} />
             </div>
+            {splitNote && (
+              // The border between both notes can be dragged; a double click splits them evenly again.
+              <ResizeHandle className="hidden -translate-x-1/2 lg:block" style={{ left: `${ratio * 100}%` }}
+                onResizeStart={(handle) => { resizeFrom.current = { value: ratio, width: handle.parentElement?.clientWidth || 1 }; }}
+                onResize={(delta) => setSplitRatio(clamp(resizeFrom.current.value + delta / resizeFrom.current.width, SPLIT_MIN, 1 - SPLIT_MIN))}
+                onReset={() => setSplitRatio(0.5)} />
+            )}
             {splitNote && (
               <div className="min-h-[60vh] min-w-0 overflow-y-auto border-t lg:min-h-0 lg:border-t-0">
                 <NoteEditor key={splitNote.id} note={splitNote} focus={focus} compact secondary onToggleFocus={() => setFocus((value) => !value)} beforeClose={splitBeforeClose}
@@ -317,7 +348,7 @@ function Workspace() {
           </SplitDropArea>
         ) : (
           <Browser scope={scope} view={view} treeOpen={treeOpen} onToggleTree={toggleTree} onOpenNote={open} onOpenDocument={setArticle}
-            onCreateNote={() => void createNote()} onCreateDocument={() => setArticle('new')}
+            onCreateNote={(title) => void createNote(undefined, title)} onCreateDocument={() => setArticle('new')}
             onSelectView={(next) => go({ view: next, id: null })} onSelectFolder={(folder) => go({ folder, id: null })} />
         )}
       </section>
@@ -336,7 +367,7 @@ type DropSide = 'left' | 'right';
  * While a note is dragged over it, two halves appear: left = open here, right = open beside.
  * Listens in the capture phase so the editor itself does not insert the dragged note as text.
  */
-function SplitDropArea({ onDropNote, className, children }: { onDropNote: (id: string, side: DropSide) => void; className?: string; children: ReactNode }) {
+function SplitDropArea({ onDropNote, className, style, children }: { onDropNote: (id: string, side: DropSide) => void; className?: string; style?: React.CSSProperties; children: ReactNode }) {
   const { t } = useI18n();
   const [side, setSide] = useState<DropSide | null>(null);
 
@@ -363,6 +394,7 @@ function SplitDropArea({ onDropNote, className, children }: { onDropNote: (id: s
   return (
     <div
       className={cn('relative', className)}
+      style={style}
       onDragOverCapture={(event) => {
         if (!isNote(event)) return;
         event.preventDefault();
@@ -505,7 +537,7 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
   onToggleTree: () => void;
   onOpenNote: (id: string) => void;
   onOpenDocument: (doc: KnowledgeArticle) => void;
-  onCreateNote: () => void;
+  onCreateNote: (title: string) => void;
   onCreateDocument: () => void;
   onSelectView: (view: View) => void;
   onSelectFolder: (folder: string | null) => void;
@@ -525,6 +557,8 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
   const [sort, setSort] = useStoredState<Sort>('explorer.sort', 'updated');
   const [selected, setSelected] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
+  // A new folder or note waits for its name, typed under its icon like in a file manager.
+  const [draft, setDraft] = useState<'folder' | 'note' | null>(null);
   const activeFilters = (Object.keys(noFilters) as (keyof Filters)[]).filter((key) => filters[key] !== noFilters[key]).length;
 
   const inFolder = scope !== ALL && scope !== UNFILED;
@@ -643,9 +677,22 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
     else setDialog({ kind: 'idea', item: entry.idea });
   }
 
-  async function newFolder() {
-    await create('folders', { name: t('explorer.newFolder'), parent_id: folderForNew, position: data.folders.length });
+  function commitDraft(name: string | null) {
+    const kind = draft;
+    setDraft(null);
+    if (name === null || !kind) return;
+    if (kind === 'folder') void create('folders', { name: name || t('explorer.newFolder'), parent_id: folderForNew, position: data.folders.length });
+    else onCreateNote(name);
   }
+
+  const draftEntry: Entry | null = !draft ? null : draft === 'folder'
+    ? { kind: 'folder', key: DRAFT, id: DRAFT, title: '', at: '', size: 0, projectId: null, folderId: folderForNew, pinned: false, folder: { id: DRAFT, name: '' } as Folder, count: 0 }
+    : { kind: 'note', key: DRAFT, id: DRAFT, title: '', at: '', size: 0, projectId: null, folderId: folderForNew, pinned: false, note: { id: DRAFT, title: '', content: '' } as Note };
+  const shown = draftEntry ? [draftEntry, ...entries] : entries;
+  const draftName = (className?: string) => (
+    <NameInput initial={draft === 'folder' ? t('explorer.newFolder') : ''} placeholder={draft === 'folder' ? t('explorer.folderName') : t('common.untitled')}
+      label={draft === 'folder' ? t('explorer.folderName') : t('common.title')} onDone={commitDraft} className={className} />
+  );
 
   /** Folder tiles take dragged entries, like the folders in the tree. */
   const folderDrop = (entry: Entry) => (entry.kind !== 'folder' ? {} : {
@@ -694,7 +741,7 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
   const page = viewPages[view];
 
   return (
-    <DropZone onFiles={(list) => void upload(list)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <DropZone onFiles={(list) => void upload(list)} className="flex min-h-0 flex-1 flex-col overflow-clip">
       <div className={cn('flex min-h-0 flex-1 flex-col gap-4 px-4 pb-3 pt-4 transition-[padding] duration-500 ease-ds lg:pl-2 lg:pr-6', current && 'xl:pr-[372px]')}>
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
           <Button variant="ghost" size="icon" onClick={onToggleTree} aria-label={t('explorer.toggle')} aria-pressed={treeOpen} className="text-muted-foreground"><PanelLeft /></Button>
@@ -723,8 +770,9 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
             <UploadButton onFiles={(list) => void upload(list)} busy={busy} variant="outline" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild><Button><Plus />{t('xp.new')}</Button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onSelect={onCreateNote}><NotebookPen />{t('entities.note')}</DropdownMenuItem>
+              {/* The name field of a new entry keeps the focus when the menu closes. */}
+              <DropdownMenuContent align="end" className="w-48" onCloseAutoFocus={(event) => { if (draft) event.preventDefault(); }}>
+                <DropdownMenuItem onSelect={() => setDraft('note')}><NotebookPen />{t('entities.note')}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={onCreateDocument}><BookOpen />{t('entities.knowledge')}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setDialog({ kind: 'task', item: 'new' })}><CheckSquare2 />{t('entities.task')}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setDialog({ kind: 'project', item: 'new' })}><FolderKanban />{t('entities.project')}</DropdownMenuItem>
@@ -732,23 +780,28 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
                 <DropdownMenuItem onSelect={() => setDialog({ kind: 'event', item: 'new' })}><CalendarDays />{t('entities.event')}</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setDialog({ kind: 'idea', item: 'new' })}><Lightbulb />{t('entities.idea')}</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => void newFolder()}><FolderPlus />{t('entities.folder')}</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setDraft('folder')}><FolderPlus />{t('entities.folder')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
         <div className="-mx-2 min-h-0 flex-1 overflow-y-auto px-2" onClick={(event) => { if (event.target === event.currentTarget) setSelected(null); }}>
-          {entries.length === 0 ? (
+          {shown.length === 0 ? (
             <EmptyState icon={query || activeFilters ? Filter : LayoutGrid} className="mt-10"
               title={query || activeFilters ? t('explorer.noResults') : t('explorer.everythingEmpty')}
               description={query || activeFilters ? undefined : t('explorer.everythingEmptyDesc')}
               action={query || activeFilters ? <Button variant="outline" onClick={() => { setFilters(noFilters); setQuery(''); }}>{t('explorer.clearFilters')}</Button> : undefined} />
           ) : layout === 'grid' ? (
             // Only the cards on screen are rendered, however many entries there are.
-            <VirtualList items={entries} keyOf={(entry) => entry.key} estimateSize={190} gap={6}
+            <VirtualList items={shown} keyOf={(entry) => entry.key} estimateSize={190} gap={6}
               columns={(width) => (width >= 1700 ? 7 : width >= 1400 ? 6 : width >= 1100 ? 5 : width >= 820 ? 4 : width >= 560 ? 3 : 2)}
-              renderItem={(entry) => (
+              renderItem={(entry) => entry.key === DRAFT ? (
+                <div className="flex w-full min-w-0 flex-col gap-2 rounded-[18px] p-2 ds-glass">
+                  <Thumb entry={entry} />
+                  {draftName('h-6 text-xs font-medium')}
+                </div>
+              ) : (
                 <button type="button" draggable aria-pressed={entry.key === selected} {...folderDrop(entry)}
                   onDragStart={(event) => {
                     setDragPayload(event, { kind: entry.kind, id: entry.id });
@@ -768,8 +821,17 @@ function Browser({ scope, view, treeOpen, onToggleTree, onOpenNote, onOpenDocume
                 </button>
               )} />
           ) : (
-            <VirtualList items={entries} keyOf={(entry) => entry.key} estimateSize={38} gap={2}
+            <VirtualList items={shown} keyOf={(entry) => entry.key} estimateSize={38} gap={2}
               renderItem={(entry) => {
+                if (entry.key === DRAFT) {
+                  return (
+                    <div className="ds-glass grid h-[38px] w-full grid-cols-[28px_minmax(0,1fr)] items-center gap-3 rounded-full px-2.5">
+                      {draft === 'folder' ? <FolderIcon className="mx-auto h-4 w-4 text-muted-foreground" strokeWidth={1.6} />
+                        : <span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-foreground text-[7px] font-bold tracking-[0.02em] text-background">MD</span>}
+                      {draftName('h-7 max-w-sm text-[13px] font-medium')}
+                    </div>
+                  );
+                }
                 const badge = badgeOf(entry);
                 return (
                   <button type="button" draggable aria-pressed={entry.key === selected} onClick={() => pick(entry)} onDoubleClick={() => openEntry(entry)} {...folderDrop(entry)}
@@ -1027,7 +1089,7 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
   openIds: (string | null)[];
   onSelectView: (view: View) => void;
   onSelectFolder: (folder: string | null) => void;
-  onCreateNote: (folderId: string | null) => void;
+  onCreateNote: (folderId: string | null, title: string) => void;
   onOpenNote: (id: string) => void;
   onOpenBeside: (id: string) => void;
   onOpenDocument: (doc: KnowledgeArticle) => void;
@@ -1035,6 +1097,8 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
 }) {
   const { t } = useI18n();
   const { data, create, update } = useWorkspace();
+  // A new folder or note shows up as a row with a name field first; it is created once named.
+  const [draft, setDraft] = useState<{ kind: 'folder' | 'note'; parentId: string | null } | null>(null);
   const move = useMove();
   const counts = useFolderCounts(data);
   const [expanded, setExpanded] = useStoredState<string[]>('notes.expanded', []);
@@ -1075,12 +1139,27 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
   }, [data.files, data.knowledge, data.notes, showFiles, t]);
   const toggle = (id: string) => setExpanded((list) => (list.includes(id) ? list.filter((entry) => entry !== id) : [...list, id]));
 
-  async function newFolder(parentId: string | null) {
-    const folder = await create('folders', { name: t('explorer.newFolder'), parent_id: parentId, position: data.folders.length });
-    if (!folder) return;
+  function startDraft(kind: 'folder' | 'note', parentId: string | null) {
     if (parentId) setExpanded((list) => [...new Set([...list, parentId])]);
-    setRenaming(folder.id);
+    setDraft({ kind, parentId });
   }
+
+  function commitDraft(name: string | null) {
+    const current = draft;
+    setDraft(null);
+    if (name === null || !current) return;
+    if (current.kind === 'folder') void create('folders', { name: name || t('explorer.newFolder'), parent_id: current.parentId, position: data.folders.length });
+    else onCreateNote(current.parentId, name);
+  }
+
+  const draftRow = (depth: number) => draft && (
+    <li className="flex h-[26px] items-center gap-[7px] pr-1" style={{ paddingLeft: `${depth * 14 + 2}px` }}>
+      <span className="w-4 shrink-0" />
+      {draft.kind === 'folder' ? <FolderIcon className="h-[15px] w-[15px] shrink-0" strokeWidth={1.6} /> : <FileText className="h-[14px] w-[14px] shrink-0 opacity-80" strokeWidth={1.6} />}
+      <NameInput initial={draft.kind === 'folder' ? t('explorer.newFolder') : ''} placeholder={draft.kind === 'folder' ? t('explorer.folderName') : t('common.untitled')}
+        label={draft.kind === 'folder' ? t('explorer.folderName') : t('common.title')} onDone={commitDraft} className="h-6 text-[13px]" />
+    </li>
+  );
 
   function drop(event: React.DragEvent, folderId: string | null) {
     event.preventDefault();
@@ -1121,7 +1200,7 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
           count={counts.get(folder.id) ?? 0}
           active={scope === folder.id}
           open={open}
-          hasChildren={children.length + files.length > 0}
+          hasChildren={children.length + files.length > 0 || draft?.parentId === folder.id}
           renaming={renaming === folder.id}
           dropActive={dropTarget === folder.id}
           dropProps={dropProps(folder.id, folder.id)}
@@ -1129,12 +1208,13 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
           onSelect={() => onSelectFolder(folder.id)}
           onRename={(name) => { setRenaming(null); if (name && name !== folder.name) void update('folders', folder.id, { name }); }}
           onStartRename={() => setRenaming(folder.id)}
-          onNewSubfolder={() => void newFolder(folder.id)}
-          onNewNote={() => onCreateNote(folder.id)}
+          onNewSubfolder={() => startDraft('folder', folder.id)}
+          onNewNote={() => startDraft('note', folder.id)}
           onDeleted={() => scope === folder.id && onSelectFolder(null)}
         />
-        {open && children.length + files.length > 0 && (
+        {open && (children.length + files.length > 0 || draft?.parentId === folder.id) && (
           <ul className="mt-0.5 space-y-0.5">
+            {draft?.parentId === folder.id && draftRow(depth + 1)}
             {children.map((child) => renderFolder(child, depth + 1))}
             {files.slice(0, limit).map((entry) => (
               <FileRow key={`${entry.kind}:${entry.id}`} entry={entry} depth={depth + 1} active={openIds.includes(entry.id)}
@@ -1185,7 +1265,7 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={() => void newFolder(null)} aria-label={t('explorer.newFolder')}><FolderPlus /></Button>
+            <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={() => startDraft('folder', null)} aria-label={t('explorer.newFolder')}><FolderPlus /></Button>
           </TooltipTrigger>
           <TooltipContent>{t('explorer.newFolder')}</TooltipContent>
         </Tooltip>
@@ -1196,6 +1276,7 @@ function Tree({ scope, view, openIds, onSelectView, onSelectFolder, onCreateNote
         <ul className="space-y-0.5">
           <TreeItem icon={LayoutGrid} label={t('explorer.everything')} count={total} active={view === 'all' && scope === ALL} onClick={() => onSelectView('all')}
             dropActive={dropTarget === UNFILED} dropProps={dropProps(null, UNFILED)} />
+          {draft && draft.parentId === null && draftRow(1)}
           {childrenOf(null).map((folder) => renderFolder(folder, 1))}
         </ul>
 
@@ -1364,7 +1445,7 @@ function FolderRow({ folder, depth, count, active, open, hasChildren, renaming, 
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuContent align="start" className="w-52" onCloseAutoFocus={(event) => event.preventDefault()}>
           <DropdownMenuLabel className="truncate">{folder.name}</DropdownMenuLabel>
           <DropdownMenuItem onSelect={onNewNote}><Plus />{t('explorer.newNoteHere')}</DropdownMenuItem>
           <DropdownMenuItem onSelect={onNewSubfolder}><FolderPlus />{t('explorer.newSubfolder')}</DropdownMenuItem>
@@ -1385,6 +1466,59 @@ function FolderRow({ folder, depth, count, active, open, hasChildren, renaming, 
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  );
+}
+
+/**
+ * Name field of a new folder or note, like in a file manager: focused with the text selected, Enter or
+ * clicking elsewhere creates the entry, Escape drops it. `onDone(null)` means cancelled.
+ */
+function NameInput({ initial, placeholder, label, onDone, className }: {
+  initial: string;
+  placeholder: string;
+  label: string;
+  onDone: (name: string | null) => void;
+  className?: string;
+}) {
+  const [value, setValue] = useState(initial);
+  const input = useRef<HTMLInputElement>(null);
+  const done = useRef(false);
+  const shownAt = useRef(0);
+
+  useEffect(() => {
+    shownAt.current = Date.now();
+    // After the menu that started it has closed and handed back the focus.
+    const frame = window.requestAnimationFrame(() => { input.current?.focus(); input.current?.select(); });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  const finish = (name: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(name);
+  };
+
+  return (
+    <input
+      ref={input}
+      value={value}
+      placeholder={placeholder}
+      aria-label={label}
+      onChange={(event) => setValue(event.target.value)}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') { event.preventDefault(); finish(value.trim()); }
+        if (event.key === 'Escape') { event.preventDefault(); finish(null); }
+      }}
+      onBlur={() => {
+        // A focus change right after it appeared (a closing menu) is not the user leaving the field.
+        if (Date.now() - shownAt.current < 400) { window.setTimeout(() => input.current?.focus(), 0); return; }
+        finish(value.trim());
+      }}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      className={cn('w-full min-w-0 rounded-md bg-field px-1.5 text-foreground shadow-sm outline-none ring-2 ring-ring/30 placeholder:text-muted-foreground', className)}
+    />
   );
 }
 

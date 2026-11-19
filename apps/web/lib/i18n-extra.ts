@@ -242,6 +242,7 @@ export const deExtra = {
   ui: {
     home: 'Start',
     breadcrumbs: 'Pfad',
+    resize: 'Breite ändern',
     quickSend: 'Telegram',
     quickSendTitle: 'Schnell erfassen',
     quickSendDesc: 'Geht direkt an deinen Telegram-Chat oder landet als Eintrag im Workspace',
@@ -717,6 +718,7 @@ export const deExtra = {
     pause: "Pausieren",
     replay: "Nochmal abspielen",
     progress: "Fortschritt der Einführung",
+    step_account: "Konto",
     step_welcome: "Willkommen",
     step_tour: "Tour",
     step_design: "Design",
@@ -1021,6 +1023,7 @@ export const enExtra: typeof deExtra = {
   ui: {
     home: 'Home',
     breadcrumbs: 'Breadcrumb',
+    resize: 'Resize',
     quickSend: 'Telegram',
     quickSendTitle: 'Quick capture',
     quickSendDesc: 'Goes straight to your Telegram chat or into the workspace as an entry',
@@ -1496,6 +1499,7 @@ export const enExtra: typeof deExtra = {
     pause: "Pause",
     replay: "Play again",
     progress: "Walkthrough progress",
+    step_account: "Account",
     step_welcome: "Welcome",
     step_tour: "Tour",
     step_design: "Design",

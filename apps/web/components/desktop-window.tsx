@@ -62,13 +62,16 @@ export function titleBarProps(win: DesktopWindow | null) {
   };
 }
 
-/** Minimize, maximize and close – drawn by the app on Windows and Linux, the system's own on macOS. */
+/**
+ * Minimize, maximize and close – drawn by the app on Windows and Linux, the system's own on macOS.
+ * Square hover areas without gaps, like the caption buttons of Windows itself.
+ */
 export function WindowControls({ win, className }: { win: DesktopWindow; className?: string }) {
   const { t } = useI18n();
   if (win.os === 'macos') return null;
-  const button = 'flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-[background-color,color] duration-300 ease-ds hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring [&_svg]:h-[14px] [&_svg]:w-[14px]';
+  const button = 'flex h-8 w-[46px] items-center justify-center rounded-none text-muted-foreground transition-[background-color,color] duration-150 hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-[2px] focus-visible:ring-inset focus-visible:ring-ring [&_svg]:h-[14px] [&_svg]:w-[14px]';
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
+    <div className={cn('flex items-center', className)}>
       <button type="button" className={button} onClick={() => void win.minimize()} aria-label={t('shell.windowMinimize')} title={t('shell.windowMinimize')}>
         <Minus strokeWidth={1.6} />
       </button>
@@ -76,9 +79,39 @@ export function WindowControls({ win, className }: { win: DesktopWindow; classNa
         aria-label={win.maximized ? t('shell.windowRestore') : t('shell.windowMaximize')} title={win.maximized ? t('shell.windowRestore') : t('shell.windowMaximize')}>
         {win.maximized ? <Copy strokeWidth={1.6} className="-scale-x-100" /> : <Square strokeWidth={1.6} className="!h-3 !w-3" />}
       </button>
-      <button type="button" className={cn(button, 'hover:bg-destructive hover:text-destructive-foreground')} onClick={() => void win.close()} aria-label={t('shell.windowClose')} title={t('shell.windowClose')}>
+      <button type="button" className={cn(button, 'hover:bg-[#C42B1C] hover:text-white')} onClick={() => void win.close()} aria-label={t('shell.windowClose')} title={t('shell.windowClose')}>
         <X strokeWidth={1.6} />
       </button>
     </div>
   );
+}
+
+/**
+ * A bare title bar for screens without the app header (sign-in, account setup, walkthrough): it moves
+ * the window and holds the window buttons. Renders nothing in a browser.
+ */
+export function DesktopTitleBar({ className, children }: { className?: string; children?: React.ReactNode }) {
+  const win = useDesktopWindow();
+  if (!win) return null;
+  return (
+    <div {...titleBarProps(win)} className={cn('flex h-8 shrink-0 select-none items-start justify-end', className)}>
+      {children}
+      <WindowControls win={win} />
+    </div>
+  );
+}
+
+/**
+ * In the desktop app a right click shows no browser menu (reload, inspect, ...): the app is not a web
+ * page there. Menus of the app itself (the title bar, folders in the explorer) open as before. In a
+ * browser nothing changes.
+ */
+export function DesktopContextMenu() {
+  useEffect(() => {
+    if (!window.__OPENSHELL__) return;
+    const block = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener('contextmenu', block);
+    return () => document.removeEventListener('contextmenu', block);
+  }, []);
+  return null;
 }

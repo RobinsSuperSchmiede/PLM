@@ -2,8 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, Send, UserPlus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Send } from 'lucide-react';
 
+import { DesktopTitleBar } from '@/components/desktop-window';
 import { DotLoader } from '@/components/dot-loader';
 import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { OtpStatus } from '@/components/ui/otp-input';
 import { WorkspaceProvider } from '@/components/workspace-provider';
+import { onboardingSteps } from '@/lib/onboarding';
 import { clearSnapshot, setSnapshotScope } from '@/lib/snapshot-store';
+
+// The ASCII map and the roadmap of the walkthrough frame the account setup, its first station.
+const AsciiField = dynamic(() => import('@/components/onboarding/ascii-field').then((module) => module.AsciiField), { ssr: false });
+const Roadmap = dynamic(() => import('@/components/onboarding/roadmap').then((module) => module.Roadmap), { ssr: false });
 
 // The code input brings the animation library (~48 kB gzipped) with it. It is only needed for the
 // Telegram step, so it is loaded there instead of with every page of the app.
@@ -75,6 +81,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (error) {
     return (
       <main className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 px-5 text-center">
+        <DesktopTitleBar className="fixed inset-x-0 top-0 z-10" />
         <p className="text-sm text-muted-foreground">{t('access.unreachable')}</p>
         <Button variant="outline" size="sm" onClick={load}>{t('common.retry')}</Button>
       </main>
@@ -84,6 +91,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (status === null) {
     return (
       <main className="flex min-h-[100dvh] items-center justify-center" aria-busy="true">
+        <DesktopTitleBar className="fixed inset-x-0 top-0 z-10" />
         <DotLoader size={36} label={t('common.loading')} className="text-muted-foreground" />
       </main>
     );
@@ -228,12 +236,82 @@ function SignIn({ setup, onSignedIn }: { setup: boolean; onSignedIn: () => void 
   }
 
   const telegramStep = step === 'telegram';
-  const Icon = telegramStep ? Send : setup ? UserPlus : LockKeyhole;
-  const title = telegramStep ? t('auth.secondTitle') : setup ? t('access.setupTitle') : t('access.signInTitle');
-  const description = telegramStep ? t('auth.secondDescription') : setup ? t('access.setupDescription') : t('access.signInDescription');
+
+  const passwordForm = (
+    <form id="auth-form" onSubmit={(event) => void submitPassword(event)} className="mt-8 space-y-4 text-left">
+      <div className="space-y-1.5">
+        <Label htmlFor="auth-username">{t('access.username')}</Label>
+        <Input id="auth-username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus className="h-9" />
+        {setup && <p className="px-1 text-xs text-muted-foreground">{t('access.usernameRules')}</p>}
+      </div>
+      {setup && (
+        <div className="space-y-1.5">
+          <Label htmlFor="auth-display-name">{t('access.displayName')} <span className="font-normal text-muted-foreground">({t('common.optional')})</span></Label>
+          <Input id="auth-display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" className="h-9" />
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <Label htmlFor="auth-password">{t('access.password')}</Label>
+        <div className="relative">
+          <Input id="auth-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)}
+            autoComplete={setup ? 'new-password' : 'current-password'} required className="h-9 pr-10" />
+          <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t('access.hidePassword') : t('access.showPassword')}
+            className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+      {setup && (
+        <div className="space-y-1.5">
+          <Label htmlFor="auth-repeat">{t('access.passwordRepeat')}</Label>
+          <Input id="auth-repeat" type={showPassword ? 'text' : 'password'} value={repeat} onChange={(event) => setRepeat(event.target.value)} autoComplete="new-password" required className="h-9" />
+        </div>
+      )}
+      <div className="min-h-[1.25rem] text-center text-sm" aria-live="polite">
+        {message && <span role="alert" className="text-destructive">{message}</span>}
+      </div>
+      {!setup && (
+        <Button type="submit" className="h-9 w-full" disabled={busy || !username || !password}>
+          {busy ? <DotLoader size={14} /> : null}
+          {busy ? t('access.signingIn') : t('access.signIn')}
+        </Button>
+      )}
+    </form>
+  );
+
+  // First start: creating the account is the first station of the walkthrough, in its frame.
+  if (setup && !telegramStep) {
+    return (
+      <div className="fixed inset-0 flex flex-col overflow-hidden bg-background" role="main" aria-labelledby="setup-title">
+        <AsciiField step={0} steps={onboardingSteps.length} />
+        <DesktopTitleBar className="relative z-10" />
+        <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className="onboarding-in-next mx-auto flex min-h-full w-full max-w-md flex-col justify-center px-5 py-10 sm:px-8">
+            <h1 id="setup-title" className="intro-rise text-[32px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[40px]">{t('access.setupTitle')}</h1>
+            <p className="intro-rise mt-2 text-[15px] text-muted-foreground" style={{ '--d': '120ms' } as React.CSSProperties}>{t('access.setupDescription')}</p>
+            <div className="intro-rise" style={{ '--d': '220ms' } as React.CSSProperties}>{passwordForm}</div>
+          </div>
+        </div>
+        <footer className="relative shrink-0 pb-2 sm:pb-4">
+          <div className="mx-auto flex w-full max-w-6xl items-center justify-end gap-2 px-5 sm:px-8">
+            <Button size="lg" type="submit" form="auth-form" disabled={busy || !username || !password || !repeat}>
+              {busy ? <DotLoader size={14} /> : null}
+              {busy ? t('access.signingIn') : t('access.setupSubmit')}
+              {!busy && <ArrowRight />}
+            </Button>
+          </div>
+          <Roadmap labels={onboardingSteps.map((entry) => t(`onboarding.step_${entry}`))} current={0} onSelect={() => undefined} label={t('onboarding.progress')} />
+        </footer>
+      </div>
+    );
+  }
+  const Icon = telegramStep ? Send : LockKeyhole;
+  const title = telegramStep ? t('auth.secondTitle') : t('access.signInTitle');
+  const description = telegramStep ? t('auth.secondDescription') : t('access.signInDescription');
 
   return (
     <main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-5 py-10">
+      <DesktopTitleBar className="fixed inset-x-0 top-0 z-10" />
       <div key={step} className="relative w-full max-w-sm text-center duration-500 animate-in fade-in slide-in-from-bottom-2">
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-[18px] bg-card shadow-sm">
           <Icon className="h-5 w-5 text-brand" strokeWidth={1.6} />
@@ -277,45 +355,7 @@ function SignIn({ setup, onSignedIn }: { setup: boolean; onSignedIn: () => void 
               </Button>
             </div>
           </>
-        ) : (
-          <form onSubmit={(event) => void submitPassword(event)} className="mt-8 space-y-4 text-left">
-            <div className="space-y-1.5">
-              <Label htmlFor="auth-username">{t('access.username')}</Label>
-              <Input id="auth-username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus className="h-9" />
-              {setup && <p className="px-1 text-xs text-muted-foreground">{t('access.usernameRules')}</p>}
-            </div>
-            {setup && (
-              <div className="space-y-1.5">
-                <Label htmlFor="auth-display-name">{t('access.displayName')} <span className="font-normal text-muted-foreground">({t('common.optional')})</span></Label>
-                <Input id="auth-display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" className="h-9" />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="auth-password">{t('access.password')}</Label>
-              <div className="relative">
-                <Input id="auth-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)}
-                  autoComplete={setup ? 'new-password' : 'current-password'} required className="h-9 pr-10" />
-                <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? t('access.hidePassword') : t('access.showPassword')}
-                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            {setup && (
-              <div className="space-y-1.5">
-                <Label htmlFor="auth-repeat">{t('access.passwordRepeat')}</Label>
-                <Input id="auth-repeat" type={showPassword ? 'text' : 'password'} value={repeat} onChange={(event) => setRepeat(event.target.value)} autoComplete="new-password" required className="h-9" />
-              </div>
-            )}
-            <div className="min-h-[1.25rem] text-center text-sm" aria-live="polite">
-              {message && <span role="alert" className="text-destructive">{message}</span>}
-            </div>
-            <Button type="submit" className="h-9 w-full" disabled={busy || !username || !password}>
-              {busy ? <DotLoader size={14} /> : null}
-              {busy ? t('access.signingIn') : setup ? t('access.setupSubmit') : t('access.signIn')}
-            </Button>
-          </form>
-        )}
+        ) : passwordForm}
       </div>
     </main>
   );

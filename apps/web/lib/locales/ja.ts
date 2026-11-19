@@ -197,7 +197,7 @@ export const ja: Dictionary = {
     file: 'ファイル', tag: 'タグ',
   },
   ui: {
-    home: 'ホーム', breadcrumbs: 'パンくずリスト', quickSend: 'Telegram', quickSendTitle: 'クイック記録',
+    home: 'ホーム', breadcrumbs: 'パンくずリスト', resize: '幅を変更', quickSend: 'Telegram', quickSendTitle: 'クイック記録',
     quickSendDesc: 'Telegram のチャットに直接送るか、エントリとしてワークスペースに保存します', quickSendPlaceholder: 'メッセージ、アイデア、タスク… #タグ @プロジェクト',
     send: '送信', sent: 'Telegram に送信しました', captured: '{type}を保存しました', captureAs: '操作', onlySend: 'Telegram に送信のみ', alsoSend: 'Telegram にも送信',
     telegramConnected: 'Telegram 接続済み', telegramOffline: 'Telegram 未接続', telegramSetup: 'Telegram を設定', shortcutHint: '{key} + Enter で送信',
@@ -329,7 +329,7 @@ export const ja: Dictionary = {
     scene_graphDesc: 'エントリとタグをリンク。グラフでプロジェクト、メモ、ミーティングの関係がわかります。', scene_telegram: 'あなたの Telegram ボット',
     scene_telegramDesc: '外出先でもチャットでタスクやメモを記録し、リマインダーや毎日のまとめをスマートフォンで受け取れます。', scene_mcp: 'MCP 経由の AI エージェント',
     scene_mcpDesc: 'Claude などの AI アシスタントがワークスペースで直接読み書きします — メモ、タスク、予定。', previous: '前のシーン', nextScene: '次のシーン', play: '再生',
-    pause: '一時停止', replay: 'もう一度再生', progress: 'ツアーの進捗', step_welcome: 'ようこそ', step_tour: 'ツアー', step_design: 'デザイン', step_mcp: 'MCP',
+    pause: '一時停止', replay: 'もう一度再生', progress: 'ツアーの進捗', step_account: 'アカウント', step_welcome: 'ようこそ', step_tour: 'ツアー', step_design: 'デザイン', step_mcp: 'MCP',
     step_telegram: 'Telegram', step_done: '完了', skip: 'スキップ', back: '戻る', next: '次へ', later: 'あとで', start: 'はじめる', finish: 'ワークスペースへ',
     welcomeTitle: 'Anamnesies へようこそ',
     welcomeText: 'プロジェクト、タスク、予定、メモ、ナレッジのための個人ワークスペース — ローカルで動作し、AI とつながります。2 分で基本を設定しましょう。',
