@@ -1,0 +1,13 @@
+#!/bin/sh
+# Python for the desktop app (openshell.json runs "plm-python ..."), also when the app is started from
+# the desktop with a short PATH (macOS apps do not see Homebrew's folders). PLM_PYTHON overrides.
+# Only Python 3.11 or newer counts. Needs the executable bit (git add --chmod=+x apps/api/plm-python).
+for candidate in "$PLM_PYTHON" python3 python /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do
+  [ -n "$candidate" ] || continue
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+    exec "$candidate" "$@"
+  fi
+done
+echo "Python 3.11 or newer was not found. Install it, or set PLM_PYTHON." >&2
+exit 127

@@ -16,6 +16,7 @@ export const zh: Dictionary = {
     groupPlan: '计划', groupCapture: '记录', groupSystem: '系统', groupKnowledge: '知识',
   },
   shell: {
+    windowMinimize: '最小化窗口', windowMaximize: '最大化窗口', windowRestore: '还原窗口', windowClose: '关闭窗口', windowMenu: '窗口菜单',
     workspace: '个人工作区', tagline: '本地 · 私密', search: '搜索', searchTitle: '搜索工作区', searchPlaceholder: '搜索页面和内容', pages: '页面', content: '内容',
     noResults: '没有结果', theme: '外观', light: '浅色', dark: '深色', system: '跟随系统', language: '语言', openNav: '打开导航', closeNav: '关闭导航',
     collapse: '收起侧边栏', expand: '展开侧边栏', serverConnected: '服务器已连接', serverOffline: '服务器无法访问',

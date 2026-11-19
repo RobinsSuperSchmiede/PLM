@@ -16,6 +16,7 @@ export const ja: Dictionary = {
     assistant: 'MCP と AI', developer: '開発者', settings: '設定', groupPlan: '計画', groupCapture: '記録', groupSystem: 'システム', groupKnowledge: 'ナレッジ',
   },
   shell: {
+    windowMinimize: 'ウィンドウを最小化', windowMaximize: 'ウィンドウを最大化', windowRestore: 'ウィンドウを元に戻す', windowClose: 'ウィンドウを閉じる', windowMenu: 'ウィンドウメニュー',
     workspace: '個人ワークスペース', tagline: 'ローカル · プライベート', search: '検索', searchTitle: 'ワークスペースを検索', searchPlaceholder: 'ページとコンテンツを検索',
     pages: 'ページ', content: 'コンテンツ', noResults: '結果がありません', theme: '外観', light: 'ライト', dark: 'ダーク', system: 'システム', language: '言語',
     openNav: 'ナビゲーションを開く', closeNav: 'ナビゲーションを閉じる', collapse: 'サイドバーを折りたたむ', expand: 'サイドバーを展開', serverConnected: 'サーバーに接続済み',

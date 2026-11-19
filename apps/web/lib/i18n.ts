@@ -71,6 +71,7 @@ const deBase = {
     groupKnowledge: 'Wissen',
   },
   shell: {
+    windowMinimize: 'Fenster minimieren', windowMaximize: 'Fenster maximieren', windowRestore: 'Fenster wiederherstellen', windowClose: 'Fenster schließen', windowMenu: 'Fenstermenü',
     workspace: 'Persönlicher Workspace',
     tagline: 'Lokal · Privat',
     search: 'Suchen',
@@ -506,6 +507,7 @@ const enBase: Omit<Dictionary, keyof typeof deExtra> = {
     groupKnowledge: 'Knowledge',
   },
   shell: {
+    windowMinimize: 'Minimize window', windowMaximize: 'Maximize window', windowRestore: 'Restore window', windowClose: 'Close window', windowMenu: 'Window menu',
     workspace: 'Personal workspace',
     tagline: 'Local · Private',
     search: 'Search',

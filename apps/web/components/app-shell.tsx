@@ -12,6 +12,7 @@ import { useI18n } from '@/components/i18n-provider';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { titleBarProps, useDesktopWindow, WindowControls } from '@/components/desktop-window';
 import { TelegramMenu } from '@/components/quick-capture';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
@@ -58,6 +59,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [modifier, setModifier] = useState('Ctrl');
   const hoverTimer = useRef<number | undefined>(undefined);
   const [sidebarPrefs] = useSidebarPrefs();
+  // Desktop app with its own title bar: the header is the title bar (see desktop-window.tsx).
+  const desktop = useDesktopWindow();
   const groups = useMemo(() => resolveNav(sidebarPrefs), [sidebarPrefs]);
   // Sub-pages the user unfolded by hand; the family of the current page is always unfolded.
   const [unfolded, setUnfolded] = useState<string[]>([]);
@@ -172,16 +175,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ '--titlebar-inset': desktop?.os === 'macos' ? '72px' : '0px' } as React.CSSProperties}>
       <AmbientBackground />
-      {/* Brand: plain text, always top left – also inside the opened navigation panel. */}
-      <Link href="/" className="fixed left-4 top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+      {/* Brand: plain text, always top left – also inside the opened navigation panel. In the desktop
+          app on macOS it moves right of the window buttons (--titlebar-inset). */}
+      <Link href="/" className="fixed left-[calc(1rem+var(--titlebar-inset))] top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
         <BrandWord />
       </Link>
 
-      {/* Floating top bar: no surface of its own, content scrolls underneath the glass pieces. */}
-      <header className={cn('pointer-events-none fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[120px] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4', pinned && 'lg:pl-[284px]')}>
-        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? 284 : 120}px)` }}>
+      {/* Floating top bar: no surface of its own, content scrolls underneath the glass pieces. In the
+          desktop app it is the window's title bar: its free space moves the window. */}
+      <header {...titleBarProps(desktop)}
+        className={cn('fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[calc(120px+var(--titlebar-inset))] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4',
+          desktop ? 'select-none' : 'pointer-events-none', pinned && 'lg:pl-[calc(284px+var(--titlebar-inset))]')}>
+        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? 284 : 120}px - var(--titlebar-inset))` }}>
           <Suspense fallback={null}><Breadcrumbs /></Suspense>
         </div>
 
@@ -195,6 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-auto flex items-center justify-end gap-1.5 sm:ml-auto">
           <TelegramMenu />
           <AccountMenu />
+          {desktop && <WindowControls win={desktop} className="ml-1.5" />}
         </div>
       </header>
 

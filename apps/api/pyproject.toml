@@ -9,7 +9,7 @@ description = "FastAPI backend for Anamnesies"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.111.0",
-  "uvicorn[standard]>=0.30.0",
+  "uvicorn[standard]>=0.36.0",
   "pydantic>=2.7.4",
   "pydantic-settings>=2.2.1",
   "sqlalchemy>=2.0.30",
@@ -24,6 +24,10 @@ dependencies = [
   "pytest>=8.3.2",
   "pytest-asyncio>=0.24.0"
 ]
+
+# Only the `app` package; data/ (uploads, SQLite files), scripts/ and tests/ are no packages to install.
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

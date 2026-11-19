@@ -1,0 +1,125 @@
+{
+  "$schema": "https://raw.githubusercontent.com/RobinsSuperSchmiede/EDA/main/schema/openshell.schema.json",
+  "version": 1,
+  "app": {
+    "name": "Anamnesies",
+    "id": "com.anamnesies.app",
+    "version": "0.1.0",
+    "description": "Local-first workspace for projects, tasks, calendar, notes and knowledge",
+    "icon": "assets/icon.png"
+  },
+  "window": {
+    "title": "Anamnesies",
+    "width": 1280,
+    "height": 820,
+    "min_width": 400,
+    "min_height": 520,
+    "close_to_tray": true,
+    "title_bar": "overlay"
+  },
+  "runtime": {
+    "background_mode": true
+  },
+  "frontend": {
+    "command": "node scripts/openshell-web.mjs dev -p ${port} -H 127.0.0.1",
+    "cwd": "apps/web",
+    "port": 3000,
+    "url": "http://localhost:${port}",
+    "env": {
+      "API_INTERNAL_URL": "${services.backend.url}"
+    },
+    "setup": {
+      "command": "npm install --no-audit --no-fund",
+      "cwd": ".",
+      "creates": "node_modules/next"
+    },
+    "build": "node scripts/openshell-web.mjs build",
+    "healthcheck": {
+      "http": "http://127.0.0.1:${port}/api/auth",
+      "ready_timeout_ms": 900000
+    },
+    "depends_on": [
+      "backend"
+    ],
+    "production": {
+      "command": "node scripts/openshell-web.mjs start -p ${port} -H 127.0.0.1"
+    }
+  },
+  "services": [
+    {
+      "name": "db",
+      "kind": "database",
+      "description": "PostgreSQL 18 with its data in OPENSHELL_DATA_DIR/postgres (system install, or downloaded on first start).",
+      "command": [
+        "plm-python",
+        "scripts/openshell_postgres.py"
+      ],
+      "cwd": "apps/api",
+      "port": "auto",
+      "healthcheck": {
+        "tcp": "127.0.0.1:${port}",
+        "ready_timeout_ms": 600000
+      },
+      "restart": true
+    },
+    {
+      "name": "backend",
+      "kind": "backend",
+      "description": "FastAPI: REST API, MCP server, scheduler and Telegram bot. Database: the db service, or what apps/api/.env configures.",
+      "command": [
+        "plm-python",
+        "scripts/openshell_api.py"
+      ],
+      "cwd": "apps/api",
+      "port": "auto",
+      "env": {
+        "PLM_POSTGRES_PORT": "${services.db.port}"
+      },
+      "setup": {
+        "command": [
+          "plm-python",
+          "scripts/openshell_api.py",
+          "--setup"
+        ],
+        "creates": "apps/api/.venv/.openshell-packages"
+      },
+      "healthcheck": {
+        "http": "http://127.0.0.1:${port}/api/v1/health",
+        "ready_timeout_ms": 600000
+      },
+      "restart": true,
+      "depends_on": [
+        "db"
+      ],
+      "watch": [
+        "apps/api/app",
+        "apps/api/pyproject.toml",
+        "apps/api/.env"
+      ]
+    }
+  ],
+  "package": {
+    "exclude": [
+      "**/.env",
+      "**/.env.local",
+      "**/.env.*.local",
+      "**/*.sqlite3",
+      "**/*.sqlite3-*",
+      "**/*.tsbuildinfo",
+      "**/*.egg-info/**",
+      "apps/api/data/**",
+      "apps/web/.next/**",
+      "apps/web/.next-prod/**",
+      "apps/web/.next-test/**",
+      "apps/web/.next-desktop/cache/**",
+      "data/**",
+      "docker-compose.yml",
+      "infrastructure/**",
+      "**/Dockerfile",
+      "**/.dockerignore",
+      ".claude/**",
+      ".github/**",
+      "Minimal Design System.html"
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 node_modules/
 .next/
 .next-prod/
+.next-desktop/
 out/
 coverage/
 .env.local
@@ -15,6 +16,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 .mypy_cache/
+
+# OpenShell (desktop app): runtime state, logs and, in a checkout, the app's data
+.openshell/
 
 # build / tooling
 .DS_Store

@@ -18,6 +18,7 @@ export const pt: Dictionary = {
     groupSystem: 'Sistema', groupKnowledge: 'Conhecimento',
   },
   shell: {
+    windowMinimize: 'Minimizar janela', windowMaximize: 'Maximizar janela', windowRestore: 'Restaurar janela', windowClose: 'Fechar janela', windowMenu: 'Menu da janela',
     workspace: 'Espaço pessoal', tagline: 'Local · Privado', search: 'Pesquisar', searchTitle: 'Pesquisar no espaço de trabalho',
     searchPlaceholder: 'Pesquisar páginas e conteúdo', pages: 'Páginas', content: 'Conteúdo', noResults: 'Nenhum resultado', theme: 'Aparência',
     light: 'Claro', dark: 'Escuro', system: 'Sistema', language: 'Idioma', openNav: 'Abrir navegação', closeNav: 'Fechar navegação',
