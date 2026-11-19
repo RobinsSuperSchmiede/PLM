@@ -41,7 +41,7 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Linux packages for the bundler
         if: runner.os == 'Linux'
@@ -49,7 +49,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -73,7 +73,7 @@ jobs:
           openshell package --out dist
 
       - name: Attach installers to the run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: anamnesies-desktop-${{ matrix.target }}
           path: dist/*
