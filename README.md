@@ -1,5 +1,10 @@
 # Anamnesies
 
+[![CI](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/ci.yml/badge.svg)](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/codeql.yml/badge.svg)](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/codeql.yml)
+[![Secret scan](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/RobinsSuperSchmiede/PLM/actions/workflows/secret-scan.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Anamnesies is a local-first personal workspace for projects, tasks, calendar, meetings, notes, documents, files and ideas. It runs on your own machine, connects to AI assistants such as Claude through MCP, and comes with its own Telegram bot for reminders and quick capture on the go.
 
 - **Local-first:** your data stays in your own PostgreSQL (or SQLite) database.
@@ -19,6 +24,9 @@ Anamnesies is a local-first personal workspace for projects, tasks, calendar, me
 - [Telegram bot](#telegram-bot)
 - [Custom domain and email](#custom-domain-and-email)
 - [Repository structure](#repository-structure)
+- [Contributing](#contributing)
+- [Security](#security)
+- [License](#license)
 
 ## Features
 
@@ -204,5 +212,28 @@ docs/                   architecture, database, development and security notes
 scripts/                install-desktop.ps1 (Windows Start menu entry)
 openshell.json          desktop app definition (OpenShell)
 docker-compose.yml      PostgreSQL + API + web app
-.github/workflows/      desktop installer builds
+.github/                CI, security checks, desktop installer builds, Dependabot,
+                        issue and pull request templates
 ```
+
+## Contributing
+
+Contributions are welcome – bug reports, ideas, translations and code. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and the checks a pull request has to pass, and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+Every push and pull request runs:
+
+| Check | What it does |
+|---|---|
+| **CI** | Type check and production build of the web app, API tests on Python 3.11, 3.12 and 3.13 |
+| **CodeQL** | Static security analysis of Python, TypeScript and the workflows (weekly as well) |
+| **Secret scan** | gitleaks blocks commits that contain passwords, tokens or keys |
+| **Dependency review** | Blocks pull requests that add dependencies with known high or critical vulnerabilities |
+| **Dependabot** | Weekly update pull requests for npm, pip, GitHub Actions and the Docker images |
+
+## Security
+
+Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md) – not in public issues. It also has hardening notes for self-hosting.
+
+## License
+
+Anamnesies is released under the [MIT License](LICENSE).

@@ -1,0 +1,54 @@
+name: CI
+
+# Type check and build of the web app, tests of the API – on every push to main and every pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web app (type check + build)
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      # npm workspace: the lockfile and node_modules live in the repository root.
+      - run: npm ci
+      - name: Type check
+        run: npx tsc --noEmit -p apps/web
+      - name: Build
+        run: npm --prefix apps/web run build
+
+  api:
+    name: API tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+      - run: pip install -e .
+      - name: Tests
+        run: pytest -q
