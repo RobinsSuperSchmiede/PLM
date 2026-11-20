@@ -26,6 +26,11 @@ def rotate_mcp_token(db: Session = Depends(get_db)) -> SettingsRead:
     return service.to_read(service.rotate_token(db))
 
 
+@router.post("/browser-token", response_model=SettingsRead)
+def rotate_browser_token(db: Session = Depends(get_db)) -> SettingsRead:
+    return service.to_read(service.rotate_browser_token(db))
+
+
 @router.get("/domain-check", response_model=DomainCheckResult)
 def domain_check(db: Session = Depends(get_db)) -> DomainCheckResult:
     row = service.get_app_settings(db)

@@ -41,10 +41,16 @@ def clear_references(db: Session, entity: Base) -> None:
         (EntityLink.target_type == entity_type) & (EntityLink.target_id == entity_id),
     )))
     if isinstance(entity, Project):
-        for model in PROJECT_SCOPED:
+        from app.models import WebNote, Website
+
+        for model in (*PROJECT_SCOPED, Website, WebNote):
             db.execute(update(model).where(model.project_id == entity_id).values(project_id=None))  # type: ignore[attr-defined]
     if isinstance(entity, StoredFile):
+        from app.models import Website
         from app.services.files import remove_content
+
+        db.execute(update(Website).where(Website.screenshot_id == entity_id).values(screenshot_id=None))
+        db.execute(update(Project).where(Project.cover_file_id == entity_id).values(cover_file_id=None))
 
         remove_content(entity)
     if isinstance(entity, Folder):

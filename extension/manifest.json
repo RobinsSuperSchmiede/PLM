@@ -1,0 +1,86 @@
+{
+  "manifest_version": 3,
+  "name": "Anamnesies – Web Notes",
+  "short_name": "Anamnesies",
+  "version": "2.0.0",
+  "description": "Sticky Notes auf Webseiten und Websites für deine Projekte – gespeichert in deiner Anamnesies-Datenbank.",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab",
+    "scripting",
+    "favicon"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "md.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Anamnesies",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
+      "description": "Popup öffnen (Seite an Projekt anhängen)"
+    },
+    "new-note": {
+      "suggested_key": {
+        "default": "Alt+Shift+N"
+      },
+      "description": "Neue Notiz erstellen"
+    },
+    "minimize-notes": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "Notiz minimieren (aktive Notiz, sonst alle)"
+    },
+    "toggle-notes": {
+      "suggested_key": {
+        "default": "Alt+Shift+H"
+      },
+      "description": "Alle Notizen ein-/ausblenden"
+    },
+    "expand-notes": {
+      "description": "Notiz aufklappen (aktive Notiz, sonst alle)"
+    },
+    "pin-note": {
+      "description": "Aktive Notiz anpinnen/lösen"
+    }
+  },
+  "options_page": "manager.html"
+}

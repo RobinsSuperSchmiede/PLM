@@ -33,3 +33,6 @@ __pycache__/
 
 # Uploaded files (local storage of the API)
 apps/api/data/
+
+# Browser extension package
+extension/dist/

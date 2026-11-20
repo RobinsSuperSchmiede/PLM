@@ -11,7 +11,7 @@ from app.api.v1.endpoints import sync as sync_module
 def test_bootstrap_returns_everything(client: TestClient) -> None:
     task = client.post("/api/v1/tasks", json={"title": "In bootstrap"}).json()
     body = client.get("/api/v1/bootstrap").json()
-    assert set(body["data"]) == {"projects", "tasks", "events", "meetings", "notes", "lists", "ideas", "knowledge", "records", "reminders", "folders", "files"}
+    assert set(body["data"]) == {"projects", "tasks", "events", "meetings", "notes", "lists", "ideas", "knowledge", "records", "reminders", "folders", "files", "websites"}
     assert any(item["id"] == task["id"] for item in body["data"]["tasks"])
     assert body["data"]["tasks"] == client.get("/api/v1/tasks").json()
     assert body["settings"] == client.get("/api/v1/settings").json()

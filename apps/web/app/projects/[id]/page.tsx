@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import {
-  Archive, ArrowLeft, BookOpen, CalendarDays, CheckSquare2, Clock3, FileText, FolderKanban, MessageCircle, Pencil, Plus, RotateCcw, Users,
+  Archive, ArrowLeft, BookOpen, CalendarDays, CheckSquare2, Clock3, FileText, FolderKanban, Globe, MessageCircle, Pencil, Plus, RotateCcw, Users,
 } from 'lucide-react';
 
 import { ActivityList } from '@/components/activity-list';
@@ -21,6 +21,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { CountUp, EmptyState, PageSkeleton } from '@/components/workspace-ui';
 import { useWorkspace } from '@/components/workspace-provider';
+import { WebsitesPanel } from '@/components/websites';
+import { ProjectImagesPanel } from '@/components/project-cover';
 import { api } from '@/lib/api';
 import { formatDateTime, relativeDay, todayKey } from '@/lib/dates';
 import { entityHref, entityIcons, entityLabelKeys } from '@/lib/entities';
@@ -28,7 +30,7 @@ import { markdownToPlainText } from '@/lib/markdown';
 import type { ActivityEntry, ArchivedItem, Task, TelegramLogEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const tabs = ['overview', 'tasks', 'notes', 'schedule', 'documents', 'telegram', 'archive'] as const;
+const tabs = ['overview', 'tasks', 'notes', 'schedule', 'documents', 'websites', 'telegram', 'archive'] as const;
 type Tab = (typeof tabs)[number];
 
 export default function ProjectWorkspacePage() {
@@ -61,6 +63,7 @@ function ProjectWorkspace() {
       meetings: data.meetings.filter((item) => item.project_id === id),
       documents: data.knowledge.filter((item) => item.project_id === id),
       ideas: data.ideas.filter((item) => item.project_id === id),
+      websites: data.websites.filter((item) => item.project_id === id),
     };
   }, [data, params.id]);
 
@@ -101,7 +104,7 @@ function ProjectWorkspace() {
   }
 
   const counts: Record<Tab, number | null> = {
-    overview: null, tasks: open.length, notes: scoped.notes.length, schedule: upcoming.length, documents: scoped.documents.length,
+    overview: null, tasks: open.length, notes: scoped.notes.length, schedule: upcoming.length, documents: scoped.documents.length, websites: scoped.websites.length,
     telegram: telegram.length, archive: archived.length,
   };
 
@@ -111,6 +114,7 @@ function ProjectWorkspace() {
     { label: t('projectHub.notes'), value: scoped.notes.length, icon: FileText },
     { label: t('projectHub.schedule'), value: upcoming.length, icon: CalendarDays },
     { label: t('projectHub.documents'), value: scoped.documents.length, icon: BookOpen },
+    { label: t('websites.tab'), value: scoped.websites.length, icon: Globe },
     { label: t('projectHub.telegram'), value: telegram.length, icon: MessageCircle },
   ];
 
@@ -137,7 +141,7 @@ function ProjectWorkspace() {
           <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)}
             className={cn('flex h-[22px] shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-book transition-[background-color,box-shadow,color] duration-600 ease-ds focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring',
               tab === value ? 'bg-seg text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-            {t(`projectHub.${value}`)}
+            {value === 'websites' ? t('websites.tab') : t(`projectHub.${value}`)}
             {counts[value] !== null && counts[value]! > 0 && <span className="font-mono text-[10px] tabular-nums opacity-70">{counts[value]}</span>}
           </button>
         ))}
@@ -146,7 +150,7 @@ function ProjectWorkspace() {
       <div key={tab} className="duration-300 animate-in fade-in slide-in-from-bottom-1">
         {tab === 'overview' && (
           <div className="space-y-6">
-            <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            <div className="stagger grid grid-cols-2 gap-3 sm:grid-cols-4 2xl:grid-cols-7">
               {kpis.map(({ label, value, suffix, icon: Icon }) => (
                 <Card key={label} className="p-4">
                   <p className="flex items-center justify-between text-xs font-medium text-muted-foreground">{label}<Icon className="h-3.5 w-3.5" /></p>
@@ -191,6 +195,7 @@ function ProjectWorkspace() {
                 <CardContent><NoteGrid notes={scoped.notes.slice(0, 4)} /></CardContent>
               </Card>
             </div>
+            <Card className="p-5"><ProjectImagesPanel project={project} /></Card>
             <Card className="p-5"><AttachmentsPanel type="project" id={project.id} projectId={project.id} /></Card>
             <Card className="p-5"><RelationsPanel type="project" id={project.id} /></Card>
           </div>
@@ -248,6 +253,8 @@ function ProjectWorkspace() {
             ) : <EmptyState icon={BookOpen} title={t('projectHub.noItems')} />}
           </div>
         )}
+
+        {tab === 'websites' && <WebsitesPanel projectId={project.id} />}
 
         {tab === 'telegram' && (
           <Card>

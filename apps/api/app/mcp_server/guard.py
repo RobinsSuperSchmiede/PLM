@@ -76,6 +76,35 @@ class _McpTokens:
 
 _mcp_tokens = _McpTokens()
 
+BROWSER_API = "/api/v1/browser/"
+BROWSER_TOKEN_HEADER = "x-anamnesies-token"
+
+
+def _load_browser_token(workspace: str) -> str | None:
+    with use_workspace(workspace):
+        db = SessionLocal()
+        try:
+            return get_app_settings(db).browser_token
+        finally:
+            db.close()
+
+
+class _BrowserTokens(_McpTokens):
+    """Browser extension token -> workspace (the default workspace in single-user mode)."""
+
+    def _build(self) -> None:
+        workspaces = accounts.active_workspaces() if accounts.is_multi_user() else [DEFAULT_WORKSPACE]
+        mapping: dict[str, str] = {}
+        for workspace in workspaces:
+            token = _load_browser_token(workspace)
+            if token:
+                mapping[token] = workspace
+        self._map = mapping
+        self._built = time.monotonic()
+
+
+_browser_tokens = _BrowserTokens()
+
 
 async def _reject(send: Send, status: int, message: str, headers: list[tuple[bytes, bytes]] | None = None) -> None:
     body = json.dumps({"detail": message}).encode()
@@ -136,7 +165,15 @@ class AccessGuardMiddleware:
             await _reject(send, 403, "The REST API is only available locally. Use /mcp for remote access.")
             return
         elif path.startswith("/api/v1"):
-            if multi and not path.startswith(PUBLIC_API):
+            browser_token = headers.get(BROWSER_TOKEN_HEADER, "").strip()
+            if browser_token and path.startswith(BROWSER_API):
+                # The browser extension: its token opens /api/v1/browser/* of one workspace, nothing else.
+                found = await anyio.to_thread.run_sync(_browser_tokens.lookup, browser_token)
+                if found is None:
+                    await _reject(send, 401, "Invalid browser extension token.")
+                    return
+                workspace = found
+            elif multi and not path.startswith(PUBLIC_API):
                 identity = await anyio.to_thread.run_sync(accounts.resolve_token, bearer_token(headers.get("authorization")))
                 if identity is None:
                     await _reject(send, 401, "Not signed in.", [(b"www-authenticate", b"Bearer")])

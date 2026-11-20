@@ -31,6 +31,7 @@ class SettingsRead(BaseModel):
     mcp_enabled: bool
     mcp_require_token: bool
     mcp_token: str | None
+    browser_token: str | None = None
     smtp_host: str | None
     smtp_port: int
     smtp_username: str | None

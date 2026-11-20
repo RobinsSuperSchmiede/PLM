@@ -36,6 +36,7 @@ Anamnesies is a local-first personal workspace for projects, tasks, calendar, me
 
 **Capture and knowledge**
 - **Explorer** – notes, documents, files and images in a folder tree, with a Markdown editor (TipTap), tabs, `[[wiki links]]` and a split view (drag a note onto the editor to open it side by side).
+- **Browser extension** (`extension/`) – sticky notes on any web page and websites attached to projects with URL and screenshot (Settings → Browser has the token).
 - **Lists** and **ideas**; **tags** and links between any entries; a **graph** of how everything is connected.
 - **Archive** for finished entries; **Warehouse** with the full history: every change, earlier versions and deleted entries, which can be restored.
 
@@ -205,6 +206,9 @@ apps/
   api/                  FastAPI app: REST API (/api/v1), MCP server (app/mcp_server),
                         scheduler, Telegram, email; scripts/ for demo data, users,
                         SQLite import and the OpenShell services; tests/ (pytest)
+extension/              browser extension (Chrome/Edge): sticky notes on web pages and
+                        websites with screenshots attached to projects, stored in the
+                        workspace database (see extension/README.md)
 packages/shared-contracts/  shared schemas between services
 services/               placeholders for a future agent runtime and standalone MCP server
                         (MCP currently lives in apps/api)

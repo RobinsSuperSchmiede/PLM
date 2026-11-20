@@ -25,6 +25,7 @@ const emptyCollections: Collections = {
   reminders: [],
   folders: [],
   files: [],
+  websites: [],
 };
 
 const resourceNames = Object.keys(emptyCollections) as ResourceName[];
@@ -288,7 +289,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       setTagAssignments((current) => current.filter((entry) => entry.entity_id !== id));
       setLinks((current) => current.filter((entry) => entry.source_id !== id && entry.target_id !== id));
       if (resource === 'folders') await Promise.all([reloadResource('folders'), reloadResource('notes')]);
-      if (resource === 'projects') await Promise.all(['tasks', 'notes', 'events', 'meetings', 'knowledge', 'ideas'].map((name) => reloadResource(name as ResourceName)));
+      if (resource === 'websites') await reloadResource('files');
+      if (resource === 'projects') await Promise.all(['tasks', 'notes', 'events', 'meetings', 'knowledge', 'ideas', 'websites'].map((name) => reloadResource(name as ResourceName)));
       return true;
     } catch (failure) {
       commit((current) => ({ ...current, [resource]: previous }));

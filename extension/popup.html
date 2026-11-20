@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Anamnesies</title>
+  <link rel="stylesheet" href="ds.css" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="head">
+    <img src="icons/icon32.png" alt="" width="20" height="20" />
+    <h1>Anamnesies</h1>
+    <span id="conn" class="badge"><span class="dot"></span><span id="conn-text">Verbinde …</span></span>
+    <span class="spacer"></span>
+    <button id="open-manager" class="icon-btn" title="Verwaltung öffnen" aria-label="Verwaltung öffnen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    </button>
+    <button id="open-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+  </header>
+
+  <div id="offline" class="alert" hidden>
+    <p id="offline-text">Anamnesies ist nicht erreichbar.</p>
+    <button id="offline-settings" class="btn sm">Einstellungen öffnen</button>
+  </div>
+
+  <nav class="seg tabs" role="tablist">
+    <button id="tab-project" class="active" role="tab" aria-selected="true">Projekt</button>
+    <button id="tab-notes" role="tab" aria-selected="false">Notizen <span id="note-count" class="count"></span></button>
+  </nav>
+
+  <!-- Seite an ein Projekt anhängen -->
+  <section id="view-project">
+    <div class="page panel">
+      <img id="page-icon" class="favicon" alt="" width="16" height="16" />
+      <div class="page-text">
+        <input id="page-title" class="title-input" placeholder="Titel" aria-label="Titel" />
+        <p id="page-url" class="url mono"></p>
+      </div>
+      <button id="copy-url" class="icon-btn" title="URL kopieren" aria-label="URL kopieren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+    </div>
+
+    <div id="attached" class="attached" hidden>
+      <span class="label">Bereits angehängt an</span>
+      <div id="attached-list" class="chips"></div>
+    </div>
+
+    <label class="label" for="project">Projekt</label>
+    <select id="project" class="field"></select>
+
+    <label class="label" for="description">Notiz zur Website <span class="muted">(optional)</span></label>
+    <textarea id="description" class="field" rows="2" placeholder="Warum ist die Seite wichtig?"></textarea>
+
+    <div class="shot-head">
+      <label class="check"><input id="with-shot" type="checkbox" checked /> Screenshot speichern</label>
+      <span class="spacer"></span>
+      <button id="recapture" class="btn ghost sm" title="Sichtbaren Bereich neu aufnehmen">Neu aufnehmen</button>
+      <button id="copy-shot" class="btn sm" title="Screenshot in die Zwischenablage kopieren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Kopieren</span>
+      </button>
+    </div>
+    <div id="shot-box" class="shot inset">
+      <img id="shot" alt="Screenshot der sichtbaren Seite" />
+      <p id="shot-empty" class="muted">Kein Screenshot möglich</p>
+    </div>
+
+    <button id="attach" class="btn primary block">An Projekt anhängen</button>
+    <p id="attach-result" class="result" hidden></p>
+  </section>
+
+  <!-- Sticky Notes der Seite -->
+  <section id="view-notes" hidden>
+    <button id="new-note" class="note-btn">+ Neue Sticky Note</button>
+    <div class="row">
+      <span class="label">Diese Seite</span>
+      <span class="spacer"></span>
+      <button id="minimize-all" class="btn ghost sm">Minimieren</button>
+      <button id="expand-all" class="btn ghost sm">Aufklappen</button>
+      <button id="toggle-hidden" class="btn ghost sm">Ausblenden</button>
+    </div>
+    <ul id="page-notes" class="list"></ul>
+    <p id="unsupported" class="muted small" hidden>Auf dieser Seite können keine Notizen angezeigt werden (z. B. Browser-Einstellungen oder Web Store).</p>
+    <div class="row">
+      <button id="delete-all" class="btn ghost sm danger">Alle hier löschen</button>
+      <span class="spacer"></span>
+      <button id="edit-shortcuts" class="btn ghost sm">Tastenkürzel</button>
+    </div>
+  </section>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="api.js"></script>
+  <script src="md.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

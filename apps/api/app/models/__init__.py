@@ -9,6 +9,7 @@ from app.models.organization import ActivityLog, ApiUsage, EntityLink, EntityTag
 from app.models.project import Project
 from app.models.record import Record
 from app.models.task import Task
+from app.models.web import WebNote, Website
 from app.models.workspace_list import ListItem, WorkspaceList
 
 __all__ = [
@@ -34,5 +35,7 @@ __all__ = [
     "Task",
     "TelegramMessageLog",
     "TelegramSettings",
+    "WebNote",
+    "Website",
     "WorkspaceList",
 ]

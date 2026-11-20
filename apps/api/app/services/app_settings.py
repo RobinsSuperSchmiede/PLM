@@ -18,12 +18,13 @@ def generate_token() -> str:
 def get_app_settings(db: Session) -> AppSettings:
     row = db.get(AppSettings, 1)
     if row is None:
-        row = AppSettings(id=1, mcp_token=generate_token())
+        row = AppSettings(id=1, mcp_token=generate_token(), browser_token=generate_token())
         db.add(row)
         db.commit()
         db.refresh(row)
-    elif not row.mcp_token:
-        row.mcp_token = generate_token()
+    elif not row.mcp_token or not row.browser_token:
+        row.mcp_token = row.mcp_token or generate_token()
+        row.browser_token = row.browser_token or generate_token()
         db.commit()
     return row
 
@@ -67,6 +68,14 @@ def update_app_settings(db: Session, payload: SettingsUpdate) -> AppSettings:
 def rotate_token(db: Session) -> AppSettings:
     row = get_app_settings(db)
     row.mcp_token = generate_token()
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def rotate_browser_token(db: Session) -> AppSettings:
+    row = get_app_settings(db)
+    row.browser_token = generate_token()
     db.commit()
     db.refresh(row)
     return row

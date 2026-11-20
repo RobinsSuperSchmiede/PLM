@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
 from app.api.v1.crud_router import build_crud_router
-from app.api.v1.endpoints import account, auth, files, health, insights, lists, organization, overview, settings, telegram, warehouse
+from app.api.v1.endpoints import account, auth, browser, files, health, insights, lists, organization, overview, settings, telegram, warehouse
 from app.api.v1.endpoints.sync import SyncResource, build_sync_router
-from app.models import Event, Folder, Idea, KnowledgeArticle, Meeting, Note, Project, Record, Reminder, StoredFile, Task, WorkspaceList
+from app.models import Event, Folder, Idea, KnowledgeArticle, Meeting, Note, Project, Record, Reminder, StoredFile, Task, Website, WorkspaceList
 from app.schemas.event import EventCreate, EventRead, EventUpdate
 from app.schemas.idea import IdeaCreate, IdeaRead, IdeaUpdate
 from app.schemas.knowledge import KnowledgeCreate, KnowledgeRead, KnowledgeUpdate
@@ -14,6 +14,7 @@ from app.schemas.notification import ReminderCreate, ReminderRead, ReminderUpdat
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.record import RecordCreate, RecordRead, RecordUpdate
 from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.web import WebsiteRead
 from app.schemas.workspace_list import ListRead
 
 api_router = APIRouter()
@@ -28,6 +29,8 @@ api_router.include_router(files.router)
 api_router.include_router(auth.router)
 api_router.include_router(account.router)
 api_router.include_router(warehouse.router)
+api_router.include_router(browser.router)
+api_router.include_router(browser.websites_router)
 
 crud_resources = [
     ("/projects", Project, ProjectCreate, ProjectUpdate, ProjectRead, (Project.created_at.desc(),), "Project"),
@@ -60,4 +63,5 @@ for path, model, create_schema, update_schema, read_schema, order_by, label in c
 sync_resources = [SyncResource(path.strip("/"), model, read_schema, order_by) for path, model, _, _, read_schema, order_by, _ in crud_resources]
 sync_resources.append(SyncResource("lists", WorkspaceList, ListRead, (WorkspaceList.created_at.desc(),), incremental=False))
 sync_resources.append(SyncResource("files", StoredFile, FileRead, (StoredFile.created_at.desc(),)))
+sync_resources.append(SyncResource("websites", Website, WebsiteRead, (Website.created_at.desc(),)))
 api_router.include_router(build_sync_router(sync_resources))

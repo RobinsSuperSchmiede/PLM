@@ -11,7 +11,7 @@ type ProjectScoped = { project_id: string | null };
 type FolderScoped = { folder_id: string | null };
 
 export type ProjectStatus = 'active' | 'on_hold' | 'completed';
-export type Project = Entity & FolderScoped & { name: string; description: string | null; status: ProjectStatus; pinned: boolean };
+export type Project = Entity & FolderScoped & { name: string; description: string | null; status: ProjectStatus; pinned: boolean; cover_file_id: string | null };
 
 export type TaskStatus = 'todo' | 'in-progress' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high';
@@ -53,6 +53,29 @@ export type Note = Entity & ProjectScoped & {
 };
 
 export type FileKind = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'presentation';
+/** A web page attached to a project (browser extension or added by hand), with an optional screenshot. */
+export type Website = Entity & {
+  url: string;
+  title: string;
+  description: string | null;
+  favicon_url: string | null;
+  project_id: string | null;
+  screenshot_id: string | null;
+};
+
+/** A sticky note the browser extension shows on a web page. */
+export type WebNote = Entity & {
+  url: string;
+  origin: string;
+  scope: 'page' | 'site';
+  page_title: string | null;
+  text: string;
+  color: string;
+  minimized: boolean;
+  pinned: boolean;
+  project_id: string | null;
+};
+
 export type StoredFile = Entity & FolderScoped & { name: string; content_type: string; size: number; kind: FileKind; description: string | null; project_id: string | null };
 
 export type Folder = Entity & { name: string; parent_id: string | null; position: number; pinned: boolean; favorite: boolean };
@@ -110,6 +133,7 @@ export type AppSettings = {
   mcp_enabled: boolean;
   mcp_require_token: boolean;
   mcp_token: string | null;
+  browser_token: string | null;
   smtp_host: string | null;
   smtp_port: number;
   smtp_username: string | null;
@@ -122,7 +146,7 @@ export type AppSettings = {
   mcp_local_url: string;
 };
 
-export type SettingsUpdate = Partial<Omit<AppSettings, 'smtp_password_set' | 'app_url' | 'mcp_url' | 'mcp_local_url' | 'mcp_token'>> & {
+export type SettingsUpdate = Partial<Omit<AppSettings, 'smtp_password_set' | 'app_url' | 'mcp_url' | 'mcp_local_url' | 'mcp_token' | 'browser_token'>> & {
   smtp_password?: string;
 };
 
@@ -143,6 +167,7 @@ export type Collections = {
   reminders: Reminder[];
   folders: Folder[];
   files: StoredFile[];
+  websites: Website[];
 };
 
 export type ResourceName = keyof Collections;
@@ -231,6 +256,12 @@ export type Stats = {
   api_calls: Record<string, Partial<Record<'api' | 'mcp', number>>>;
   telegram: { connected: boolean; bot_username: string | null; days: Record<string, Partial<Record<'in' | 'out', number>>>; total_in: number; total_out: number };
   database: { engine: string; size: number | null };
+  storage: { files: number; files_archived: number };
+  task_status: Partial<Record<TaskStatus, number>>;
+  meeting_status: Partial<Record<MeetingStatus, number>>;
+  /** Entries created per day (last 60 days), by type. */
+  created: Record<string, Partial<Record<EntityType, number>>>;
+  web: { notes: number; websites: number };
   scheduler_enabled: boolean;
 };
 

@@ -18,7 +18,7 @@ import { clamp, ResizeHandle } from '@/components/resize-handle';
 import { useWorkspace } from '@/components/workspace-provider';
 import type { TranslationKey } from '@/lib/i18n';
 import { onboardingEvent } from '@/lib/onboarding';
-import { type NavItem as PageItem, type ResolvedNavItem, navItems, resolveNav, useSidebarPrefs } from '@/lib/navigation';
+import { type NavGroupId, type NavItem as PageItem, type ResolvedNavItem, navItems, resolveNav, useSidebarPrefs } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 type NavItem = { key: TranslationKey; href: string; icon: LucideIcon };
@@ -166,25 +166,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const navList = (open: boolean, withPin: boolean) => (
-    <div className="flex min-h-full flex-col gap-2">
-      {withPin && (
-        <RailButton open={open} label={pinned ? t('shell.collapse') : t('shell.expand')} icon={pinned ? PanelLeftClose : PanelLeftOpen}
-          onClick={togglePinned} pressed={pinned} />
+  // System pages, docs and settings sit together at the bottom of the rail.
+  const pinnedGroups: NavGroupId[] = ['system', 'bottom'];
+  const navGroup = (group: (typeof groups)[number], open: boolean) => (
+    <div key={group.id} className="flex flex-col gap-[2px]">
+      {group.key && (
+        <p className={cn('ds-label overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity] duration-500 ease-ds', open ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0')} aria-hidden={!open}>
+          {t(group.key)}
+        </p>
       )}
-      {groups.map((group) => {
-        const list = group.items.map((item) => family(item, open));
-        return group.id === 'bottom' ? <div key={group.id} className="mt-auto flex flex-col gap-[2px] pt-2">{list}</div> : (
-          <div key={group.id} className="flex flex-col gap-[2px]">
-            {group.key && (
-              <p className={cn('ds-label overflow-hidden whitespace-nowrap px-2.5 transition-[max-height,opacity] duration-500 ease-ds', open ? 'max-h-5 opacity-100' : 'max-h-0 opacity-0')} aria-hidden={!open}>
-                {t(group.key)}
-              </p>
-            )}
-            {list}
-          </div>
-        );
-      })}
+      {group.items.map((item) => family(item, open))}
+    </div>
+  );
+  const navList = (open: boolean) => (
+    <div className="flex min-h-full flex-col gap-2">
+      {groups.filter((group) => !pinnedGroups.includes(group.id)).map((group) => navGroup(group, open))}
+      <div className="mt-auto flex flex-col gap-2 pt-2">
+        {groups.filter((group) => pinnedGroups.includes(group.id)).map((group) => navGroup(group, open))}
+      </div>
     </div>
   );
 
@@ -193,16 +192,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AmbientBackground />
       {/* Brand: plain text, always top left – also inside the opened navigation panel. In the desktop
           app on macOS it moves right of the window buttons (--titlebar-inset). */}
-      <Link href="/" className="fixed left-[calc(1rem+var(--titlebar-inset))] top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring">
+      {/* Sidebar toggle: a bare icon left of the brand, centered over the rail icons (desktop only). */}
+      <button type="button" onClick={togglePinned} aria-pressed={pinned} aria-label={pinned ? t('shell.collapse') : t('shell.expand')} title={pinned ? t('shell.collapse') : t('shell.expand')}
+        className="fixed left-[calc(19px+var(--titlebar-inset))] top-0 z-50 hidden h-14 items-center text-muted-foreground transition-colors duration-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring lg:flex">
+        {pinned ? <PanelLeftClose style={{ width: 16, height: 16 }} strokeWidth={1.6} /> : <PanelLeftOpen style={{ width: 16, height: 16 }} strokeWidth={1.6} />}
+      </button>
+      <Link href="/" className="fixed left-[calc(1rem+var(--titlebar-inset))] top-0 z-50 flex h-14 items-center rounded-full focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring lg:left-[calc(46px+var(--titlebar-inset))]">
         <BrandWord />
       </Link>
 
       {/* Floating top bar: no surface of its own, content scrolls underneath the glass pieces. In the
           desktop app it is the window's title bar: its free space moves the window. */}
       <header {...titleBarProps(desktop)}
-        className={cn('fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[calc(120px+var(--titlebar-inset))] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4',
+        className={cn('fixed inset-x-0 top-0 z-30 flex h-14 items-center gap-3 pl-[calc(120px+var(--titlebar-inset))] lg:pl-[calc(150px+var(--titlebar-inset))] pr-3 transition-[padding] duration-700 ease-ds sm:pr-4',
           desktop ? 'select-none' : 'pointer-events-none', pinned && 'lg:pl-[calc(var(--sidebar-w)+36px+var(--titlebar-inset))]')}>
-        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? sidebarWidth + 36 : 120}px - var(--titlebar-inset))` }}>
+        <div className="pointer-events-auto hidden min-w-0 items-center md:flex" style={{ maxWidth: `calc(50vw - 15.5rem - ${pinned ? sidebarWidth + 36 : 150}px - var(--titlebar-inset))` }}>
           <Suspense fallback={null}><Breadcrumbs /></Suspense>
         </div>
 
@@ -229,7 +233,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onFocusCapture={() => hover(true)}
         onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hover(false); }}>
         <div className="no-scrollbar h-full overflow-y-auto overflow-x-hidden px-3 pb-3 pt-0.5">
-          {navList(expanded, true)}
+          {navList(expanded)}
         </div>
         {/* The open panel's right edge sets its width. */}
         {expanded && (
@@ -245,7 +249,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button className="absolute inset-0 bg-black/20 backdrop-blur-[3px] duration-500 animate-in fade-in" aria-label={t('shell.closeNav')} onClick={() => setMobileOpen(false)} />
           <aside className="pb-safe ds-menu no-scrollbar absolute inset-y-3 left-3 w-[min(17rem,85vw)] overflow-y-auto rounded-2xl p-2 duration-700 ease-ds animate-in slide-in-from-left">
-            {navList(true, false)}
+            {navList(true)}
           </aside>
         </div>
       )}
@@ -319,15 +323,6 @@ function RailLink({ item, label, active, open, badge, nested, onNavigate, onInte
         </span>
       )}
     </Link>
-  );
-}
-
-function RailButton({ open, label, icon: Icon, onClick, pressed }: { open: boolean; label: string; icon: LucideIcon; onClick: () => void; pressed: boolean }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={pressed} aria-label={label} className={railItemClass(open, false)}>
-      <Icon className="shrink-0" style={{ width: 16, height: 16 }} strokeWidth={1.6} />
-      <RailLabel open={open}>{label}</RailLabel>
-    </button>
   );
 }
 

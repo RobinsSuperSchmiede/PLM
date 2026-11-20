@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Anamnesies – Web Notes</title>
+  <link rel="icon" href="icons/icon32.png" />
+  <link rel="stylesheet" href="ds.css" />
+  <link rel="stylesheet" href="manager.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="icons/icon48.png" alt="" width="28" height="28" />
+        <div>
+          <h1>Anamnesies</h1>
+          <p id="stats" class="stats">Lade …</p>
+        </div>
+      </div>
+
+      <nav class="seg" role="tablist" aria-label="Bereich">
+        <button id="tab-notes" class="active" role="tab">Notizen <span id="count-notes" class="count"></span></button>
+        <button id="tab-sites" role="tab">Websites <span id="count-sites" class="count"></span></button>
+        <button id="tab-settings" role="tab">Einstellungen</button>
+      </nav>
+
+      <label class="search" id="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" class="field" type="search" placeholder="Notizen, Seiten und Websites durchsuchen" autocomplete="off" />
+        <span class="kbd">/</span>
+      </label>
+
+      <div class="topbar-actions">
+        <span id="conn" class="badge"><span class="dot"></span><span id="conn-text">Verbinde …</span></span>
+        <button id="open-app" class="btn sm" title="Anamnesies öffnen">Anamnesies öffnen</button>
+      </div>
+    </div>
+
+    <div class="toolbar" id="toolbar-notes">
+      <div class="filters" id="color-filters" role="group" aria-label="Nach Farbe filtern"></div>
+      <button id="filter-pinned" class="chip" aria-pressed="false">Angepinnt</button>
+      <button id="filter-site" class="chip" aria-pressed="false">Ganze Website</button>
+      <span class="spacer"></span>
+      <select id="sort" class="field" aria-label="Sortieren">
+        <option value="updated">Zuletzt geändert</option>
+        <option value="created">Zuletzt erstellt</option>
+        <option value="oldest">Älteste zuerst</option>
+        <option value="site">Nach Website (A–Z)</option>
+      </select>
+      <div class="seg" role="group" aria-label="Ansicht">
+        <button id="view-grouped" class="active" aria-pressed="true">Nach Seite</button>
+        <button id="view-flat" aria-pressed="false">Alle</button>
+      </div>
+      <button id="export" class="btn ghost sm" title="Alle Notizen als JSON-Datei speichern">Export</button>
+      <button id="import" class="btn ghost sm" title="Notizen aus JSON-Datei hinzufügen (auch aus der alten Sticky-Notes-Erweiterung)">Import</button>
+      <input id="import-file" type="file" accept="application/json,.json" hidden />
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <template id="empty-template">
+    <div class="empty">
+      <div class="empty-note"></div>
+      <h2>Noch keine Notizen</h2>
+      <p>Öffne eine Webseite und erstelle eine Notiz über das Toolbar-Icon, per Rechtsklick
+        oder mit <span class="kbd">Alt</span>+<span class="kbd">Shift</span>+<span class="kbd">N</span>.</p>
+    </div>
+  </template>
+
+  <template id="settings-template">
+    <div class="page-head">
+      <div>
+        <h2>Einstellungen</h2>
+        <p>Die Erweiterung speichert Notizen und Websites in deiner Anamnesies-Datenbank.</p>
+      </div>
+    </div>
+    <div class="settings">
+      <section class="panel">
+        <h3>Verbindung</h3>
+        <label class="label" for="server">Server-Adresse (die Web-App)</label>
+        <input id="server" class="field mono" placeholder="http://localhost:3000" spellcheck="false" />
+        <label class="label" for="token">Token der Erweiterung</label>
+        <input id="token" class="field mono" type="password" placeholder="Anamnesies → Einstellungen → Browser" spellcheck="false" autocomplete="off" />
+        <p>Den Token findest du in Anamnesies unter <strong>Einstellungen → Browser</strong>. Er öffnet nur die Endpunkte der Erweiterung.</p>
+        <div class="row">
+          <button id="save-settings" class="btn primary">Speichern &amp; testen</button>
+          <button id="open-browser-settings" class="btn ghost">Token in Anamnesies anzeigen</button>
+          <span class="spacer"></span>
+          <span id="conn-state" class="conn-state"></span>
+        </div>
+      </section>
+      <section class="panel">
+        <h3>So funktioniert's</h3>
+        <ol>
+          <li><strong>Sticky Notes:</strong> Toolbar-Icon → Notizen, Rechtsklick „Sticky Note hier einfügen" oder <span class="kbd">Alt</span>+<span class="kbd">Shift</span>+<span class="kbd">N</span>.</li>
+          <li><strong>Website an Projekt:</strong> Toolbar-Icon (<span class="kbd">Alt</span>+<span class="kbd">Shift</span>+<span class="kbd">A</span>) → Projekt wählen → „An Projekt anhängen". URL und Screenshot landen im Projekt unter <em>Websites</em>.</li>
+          <li><strong>Screenshot kopieren:</strong> im Popup, hier unter <em>Websites</em> oder im Projekt in Anamnesies.</li>
+          <li><strong>Alte Notizen übernehmen:</strong> in der alten Sticky-Notes-Erweiterung exportieren, hier unter <em>Notizen → Import</em> einlesen.</li>
+        </ol>
+        <div class="row"><button id="edit-shortcuts" class="btn sm">Tastenkürzel ändern</button></div>
+      </section>
+    </div>
+  </template>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="api.js"></script>
+  <script src="md.js"></script>
+  <script src="manager.js"></script>
+</body>
+</html>

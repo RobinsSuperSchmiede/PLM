@@ -8,6 +8,7 @@ import { ArrowRight, CalendarDays, FileText, FolderKanban, Pencil, Pin, Plus } f
 import { ANY, FilterBar } from '@/components/filter-bar';
 import { useI18n } from '@/components/i18n-provider';
 import { ArchiveButton, EntityTags } from '@/components/knowledge';
+import { ProjectCover } from '@/components/project-cover';
 import { ProjectDialog, projectStatusVariant } from '@/components/project-dialog';
 import { TaskDialog } from '@/components/task-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +85,11 @@ export default function ProjectsPage() {
             const schedule = data.events.filter((event) => event.project_id === project.id).length + data.meetings.filter((meeting) => meeting.project_id === project.id).length;
             return (
               <Card key={project.id} className="flex flex-col overflow-hidden transition-shadow duration-200 ease-ds hover:shadow-md">
+                {project.cover_file_id && (
+                  <Link href={`/projects/${project.id}`} tabIndex={-1} aria-hidden="true" className="block overflow-hidden">
+                    <ProjectCover project={project} className="aspect-[16/7] transition-transform duration-700 ease-ds hover:scale-[1.02]" />
+                  </Link>
+                )}
                 <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
                   <Link href={`/projects/${project.id}`} className="min-w-0 space-y-1.5">
                     <CardTitle className="flex items-center gap-2 truncate text-base hover:underline"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorOf(project.name) }} aria-hidden="true" />{project.name}</CardTitle>

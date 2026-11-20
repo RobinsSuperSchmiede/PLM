@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useEffect, useState } from 'react';
-import { AtSign, CheckCircle2, Globe, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, PlayCircle, RefreshCw, Send, ServerCog, Settings2, Sun, UserRound, Users, XCircle } from 'lucide-react';
+import { AtSign, CheckCircle2, Globe, Puzzle, Loader2, Lock, Mail, Monitor, Moon, Palette, PanelLeft, PlayCircle, RefreshCw, Send, ServerCog, Settings2, Sun, UserRound, Users, XCircle } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -28,7 +28,7 @@ import { openOnboarding } from '@/lib/onboarding';
 import type { AppSettings, DomainCheck, Language, SmtpSecurity, TelegramSettings as TelegramSettingsType, ThemePreference } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
-const tabs = ['general', 'account', 'users', 'appearance', 'sidebar', 'domain', 'mcp', 'telegram', 'email', 'security'] as const;
+const tabs = ['general', 'account', 'users', 'appearance', 'sidebar', 'domain', 'mcp', 'browser', 'telegram', 'email', 'security'] as const;
 
 export default function SettingsPage() {
   return <Suspense fallback={<PageSkeleton />}><SettingsView /></Suspense>;
@@ -58,6 +58,7 @@ function SettingsView() {
           <TabsTrigger value="sidebar"><PanelLeft />{t('sidebar.title')}</TabsTrigger>
           <TabsTrigger value="domain"><Globe />{t('settings.domain')}</TabsTrigger>
           <TabsTrigger value="mcp"><ServerCog />{t('settings.mcp')}</TabsTrigger>
+          <TabsTrigger value="browser"><Puzzle />{t('websites.settingsTab')}</TabsTrigger>
           <TabsTrigger value="telegram"><Send />{t('settings.telegram')}</TabsTrigger>
           <TabsTrigger value="email"><Mail />{t('settings.email')}</TabsTrigger>
           <TabsTrigger value="security"><Lock />{t('settings.security')}</TabsTrigger>
@@ -69,6 +70,7 @@ function SettingsView() {
         <TabsContent value="sidebar"><SidebarSettings /></TabsContent>
         <TabsContent value="domain"><DomainSettings settings={settings} /></TabsContent>
         <TabsContent value="mcp"><McpSettings settings={settings} /></TabsContent>
+        <TabsContent value="browser"><BrowserExtensionSettings settings={settings} /></TabsContent>
         <TabsContent value="telegram"><TelegramSettings /></TabsContent>
         <TabsContent value="email"><EmailSettings settings={settings} /></TabsContent>
         <TabsContent value="security"><SecuritySettings /></TabsContent>
@@ -273,6 +275,51 @@ function McpSettings({ settings }: { settings: AppSettings }) {
             <Button variant="outline" size="sm" onClick={() => void rotate()} disabled={rotating}><RefreshCw className={cn(rotating && 'animate-spin')} />{t('settings.rotate')}</Button>
           </div>
           <p className="text-xs text-muted-foreground">{t('assistant.tokenHint')}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BrowserExtensionSettings({ settings }: { settings: AppSettings }) {
+  const { t } = useI18n();
+  const { setSettings } = useWorkspace();
+  const [rotating, setRotating] = useState(false);
+  const [origin, setOrigin] = useState('');
+  useEffect(() => setOrigin(window.location.origin), []);
+
+  async function rotate() {
+    setRotating(true);
+    try {
+      setSettings(await api.post<AppSettings>('/settings/browser-token'));
+      toast.success(t('settings.rotated'));
+    } catch (failure) {
+      toast.error(failure instanceof ApiError ? failure.message : String(failure));
+    } finally {
+      setRotating(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t('websites.extensionTitle')}</CardTitle>
+        <CardDescription>{t('websites.extensionDesc')}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <UrlRow label={t('websites.serverUrl')} value={origin} />
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground">{t('websites.token')}</p>
+          <div className="flex items-center gap-2">
+            <TokenField value={settings.browser_token ?? ''} />
+            <Button variant="outline" size="sm" onClick={() => void rotate()} disabled={rotating}><RefreshCw className={cn(rotating && 'animate-spin')} />{t('settings.rotate')}</Button>
+          </div>
+          <p className="text-xs text-muted-foreground">{t('websites.tokenHint')}</p>
+        </div>
+        <Separator />
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">{t('websites.install')}</p>
+          <p className="text-sm text-muted-foreground">{t('websites.installSteps')}</p>
         </div>
       </CardContent>
     </Card>

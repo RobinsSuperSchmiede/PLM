@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.models import ActivityLog, EntityLink, Reminder, Tag, Task, TelegramMessageLog
+from app.models import ActivityLog, EntityLink, Meeting, Reminder, StoredFile, Tag, Task, TelegramMessageLog, WebNote, Website
 from app.services import db_explorer, notifications, usage
 from app.services.registry import ENTITY_MODELS
 
@@ -55,6 +55,19 @@ def stats(db: Session = Depends(get_db)) -> dict[str, Any]:
     for at, direction in db.execute(select(TelegramMessageLog.at, TelegramMessageLog.direction).where(TelegramMessageLog.at >= since)):
         telegram_days[_day(at)][direction] += 1
 
+    # Storage: database file plus uploaded files, split into active and archived files.
+    files_active, files_archived = 0, 0
+    for active, size in db.execute(select(StoredFile.archived_at.is_(None), func.coalesce(func.sum(StoredFile.size), 0)).group_by(StoredFile.archived_at.is_(None))):
+        if active:
+            files_active = int(size)
+        else:
+            files_archived = int(size)
+    task_status = {str(key): value for key, value in db.execute(select(Task.status, func.count()).where(Task.archived_at.is_(None)).group_by(Task.status))}
+    meeting_status = {str(key): value for key, value in db.execute(select(Meeting.status, func.count()).where(Meeting.archived_at.is_(None)).group_by(Meeting.status))}
+    created_days: dict[str, Counter[str]] = defaultdict(Counter)
+    for at, entity_type in db.execute(select(ActivityLog.at, ActivityLog.entity_type).where(ActivityLog.at >= datetime.now(timezone.utc) - timedelta(days=60), ActivityLog.action == "create")):
+        created_days[_day(at)][entity_type] += 1
+
     telegram_row = notifications.get_telegram_settings(db)
     api_days = usage.per_day(db, (today - timedelta(days=60)).isoformat())
     return {
@@ -74,6 +87,14 @@ def stats(db: Session = Depends(get_db)) -> dict[str, Any]:
             "total_out": db.scalar(select(func.count()).select_from(TelegramMessageLog).where(TelegramMessageLog.direction == "out")) or 0,
         },
         "database": {"engine": db.get_bind().dialect.name, "size": db_explorer.database_size(db)},
+        "storage": {"files": files_active, "files_archived": files_archived},
+        "task_status": task_status,
+        "meeting_status": meeting_status,
+        "created": {day: dict(types) for day, types in sorted(created_days.items())},
+        "web": {
+            "notes": db.scalar(select(func.count()).select_from(WebNote)) or 0,
+            "websites": db.scalar(select(func.count()).select_from(Website).where(Website.archived_at.is_(None))) or 0,
+        },
         "scheduler_enabled": get_settings().scheduler_enabled,
     }
 

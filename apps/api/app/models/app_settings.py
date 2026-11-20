@@ -25,6 +25,8 @@ class AppSettings(Base):
     mcp_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     mcp_require_token: Mapped[bool] = mapped_column(Boolean, default=True)
     mcp_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Token of the browser extension (header X-Anamnesies-Token); only grants /api/v1/browser/*.
+    browser_token: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     smtp_host: Mapped[str | None] = mapped_column(String(253), nullable=True)
     smtp_port: Mapped[int] = mapped_column(Integer, default=587)

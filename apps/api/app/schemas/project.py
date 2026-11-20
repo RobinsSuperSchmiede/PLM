@@ -14,6 +14,7 @@ class ProjectCreate(BaseModel):
     status: ProjectStatus = "active"
     folder_id: uuid.UUID | None = None
     pinned: bool = False
+    cover_file_id: uuid.UUID | None = None
 
 
 class ProjectUpdate(BaseModel):
@@ -22,6 +23,7 @@ class ProjectUpdate(BaseModel):
     status: ProjectStatus | None = None
     folder_id: uuid.UUID | None = None
     pinned: bool | None = None
+    cover_file_id: uuid.UUID | None = None
 
 
 class ProjectRead(ProjectCreate, EntityRead):
