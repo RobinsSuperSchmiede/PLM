@@ -21,7 +21,7 @@
     "background_mode": true
   },
   "frontend": {
-    "command": "node scripts/openshell-web.mjs dev -p ${port} -H 127.0.0.1",
+    "command": ["plm-node", "scripts/openshell-web.mjs", "dev", "-p", "${port}", "-H", "127.0.0.1"],
     "cwd": "apps/web",
     "port": 3000,
     "url": "http://localhost:${port}",
@@ -29,11 +29,11 @@
       "API_INTERNAL_URL": "${services.backend.url}"
     },
     "setup": {
-      "command": "npm install --no-audit --no-fund",
-      "cwd": ".",
+      "command": ["plm-node", "scripts/npm.mjs", "install", "--no-audit", "--no-fund"],
+      "cwd": "apps/web",
       "creates": "node_modules/next"
     },
-    "build": "node scripts/openshell-web.mjs build",
+    "build": ["plm-node", "scripts/openshell-web.mjs", "build"],
     "healthcheck": {
       "http": "http://127.0.0.1:${port}/api/auth",
       "ready_timeout_ms": 900000
@@ -42,7 +42,7 @@
       "backend"
     ],
     "production": {
-      "command": "node scripts/openshell-web.mjs start -p ${port} -H 127.0.0.1"
+      "command": ["plm-node", "scripts/openshell-web.mjs", "start", "-p", "${port}", "-H", "127.0.0.1"]
     }
   },
   "services": [
@@ -119,7 +119,8 @@
       "**/.dockerignore",
       ".claude/**",
       ".github/**",
-      "Minimal Design System.html"
+      "Minimal Design System.html",
+      "site/**"
     ]
   }
 }

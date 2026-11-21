@@ -54,7 +54,8 @@ Anamnesies is a local-first personal workspace for projects, tasks, calendar, me
 
 | Way | For | Needs |
 |---|---|---|
-| [Desktop app](#desktop-app-openshell) | Everyday use on your own computer | OpenShell, Python 3.11+, Node.js 20+ (PostgreSQL is set up automatically) |
+| [Download](https://robinssuperschmiede.github.io/PLM/) | Everyday use on your own computer | Nothing: the installer sets up Python, Node.js and PostgreSQL itself if they are missing |
+| [Desktop app from a checkout](#desktop-app-openshell) | Using the app while changing its code | OpenShell, Python 3.11+, Node.js 20+ (or let the app download them) |
 | [Local development](#local-development) | Working on the code | Python 3.11+, Node.js 20+, optionally PostgreSQL |
 | [Docker](#docker) | A server or a home lab | Docker / Docker Compose |
 
@@ -102,9 +103,17 @@ The servers run from this folder, so changes take effect – by hand or with a c
 
 ### Installers
 
-`openshell package` builds the web app and creates an installer with the app files (`setup.exe` on Windows, `.dmg` on macOS, `.deb`/`.AppImage` on Linux). `package.exclude` in `openshell.json` keeps `.env` files, databases, build caches and Docker files out of it. The installed app needs Python 3.11+ and Node.js 20+ on the machine and installs the packages on its first start (several minutes). Its files are replaced by updates, so develop in a checkout, not in the installed folder. The installers are not code-signed.
+**Download:** https://robinssuperschmiede.github.io/PLM/ (the page in `site/`) picks the installer for your system; the files are the assets of the [latest release](https://github.com/RobinsSuperSchmiede/PLM/releases/latest) under fixed names (`Anamnesies-Windows-x64-Setup.exe`, `Anamnesies-macOS-AppleSilicon.dmg`, `Anamnesies-Linux-x64.AppImage`, `Anamnesies-Linux-x64.deb`), so `releases/latest/download/<name>` always gives the newest one.
 
-The GitHub workflow **Desktop app** (`.github/workflows/desktop.yml`) builds the installers for Windows, macOS (Apple Silicon) and Linux: run it by hand under Actions, or push a tag `desktop-v*` to also get a draft release.
+`openshell package` builds the web app and creates an installer with the app files (`setup.exe` on Windows, `.dmg` on macOS, `.deb`/`.AppImage` on Linux). `package.exclude` in `openshell.json` keeps `.env` files, databases, build caches and Docker files out of it. The installed app needs nothing else on the machine: the services start through `apps/api/plm-python` and `apps/web/plm-node`, which use a Python 3.11+ / Node.js 20+ of the system and otherwise download a pinned portable build once into the data folder (`runtimes/`, checked against a SHA-256 in `scripts/runtimes/ensure.ps1` / `ensure.sh`) – like the PostgreSQL of the db service. The first start then installs the packages (several minutes, needs the internet). `PLM_DOWNLOAD_RUNTIMES=1` makes the launchers skip the system's Python and Node.js, to try the download. Its files are replaced by updates, so develop in a checkout, not in the installed folder. The installers are not code-signed: Windows SmartScreen and macOS Gatekeeper warn on the first start, and Windows with Smart App Control on blocks them.
+
+The GitHub workflow **Desktop app** (`.github/workflows/desktop.yml`) builds the installers for Windows, macOS (Apple Silicon) and Linux. Run it by hand under Actions to get them as run artifacts, or release a version:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0   # the tag sets the app version; the release is published when all three builds pass
+```
+
+The workflow downloads OpenShell from the releases of the OpenShell repository; while that repository is private, the secret `OPENSHELL_TOKEN` needs a token that can read it. The workflow **Download page** (`.github/workflows/pages.yml`) publishes `site/` with GitHub Pages (Settings → Pages → Source: GitHub Actions).
 
 Next.js rewrites `apps/web/next-env.d.ts` to point at the build folder it used last (`.next` or `.next-desktop`); that change can be ignored.
 

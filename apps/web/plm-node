@@ -1,0 +1,27 @@
+#!/bin/sh
+# Node.js for the desktop app (openshell.json runs "plm-node ..."), also when the app is started from
+# the desktop with a short PATH (macOS apps do not see Homebrew's folders). PLM_NODE overrides.
+# Only Node.js 20 or newer counts. Without one, scripts/runtimes/ensure.sh downloads a portable
+# Node.js once into the app's data folder. Its folder goes first on the PATH, so npm and the scripts it
+# runs find the same node. PLM_DOWNLOAD_RUNTIMES=1 skips the search.
+# Needs the executable bit (git add --chmod=+x apps/web/plm-node).
+run() {
+  PATH="$(dirname "$1"):$PATH"
+  export PATH
+  exec "$@"
+}
+if [ -z "${PLM_DOWNLOAD_RUNTIMES:-}" ]; then
+  for candidate in "${PLM_NODE:-}" node /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+    [ -n "$candidate" ] || continue
+    found="$(command -v "$candidate" 2>/dev/null)" || continue
+    if "$found" -e 'process.exit(parseInt(process.versions.node) < 20 ? 1 : 0)' >/dev/null 2>&1; then
+      run "$found" "$@"
+    fi
+  done
+fi
+here="$(cd "$(dirname "$0")" && pwd)"
+if node="$(sh "$here/../../scripts/runtimes/ensure.sh" node)"; then
+  run "$node" "$@"
+fi
+echo "Node.js 20 or newer was not found and could not be downloaded. Install it, or set PLM_NODE." >&2
+exit 127

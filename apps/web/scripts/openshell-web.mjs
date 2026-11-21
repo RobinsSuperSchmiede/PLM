@@ -34,7 +34,7 @@ const [mode, ...options] = process.argv.slice(2);
  */
 function sourceHash() {
   const hash = createHash('sha256');
-  const skipped = new Set(['node_modules', '.git', 'scripts', 'next-env.d.ts', 'tsconfig.tsbuildinfo', 'Dockerfile', '.dockerignore']);
+  const skipped = new Set(['node_modules', '.git', 'scripts', 'next-env.d.ts', 'tsconfig.tsbuildinfo', 'Dockerfile', '.dockerignore', 'plm-node', 'plm-node.cmd']);
   const walk = (folder) => {
     if (!fs.existsSync(folder)) return;
     for (const entry of fs.readdirSync(folder, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
