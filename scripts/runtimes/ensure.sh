@@ -8,8 +8,8 @@
 #
 #   sh ensure.sh python|node
 #
-# Keep the versions in sync with ensure.ps1 (Windows). Needs the executable bit
-# (git add --chmod=+x scripts/runtimes/ensure.sh).
+# Keep the versions close to ensure.ps1 (Windows takes the signed python.org build from NuGet there).
+# Needs the executable bit (git add --chmod=+x scripts/runtimes/ensure.sh).
 set -eu
 
 tool="${1:-}"
@@ -25,13 +25,13 @@ esac
 
 # Portable CPython (https://github.com/astral-sh/python-build-standalone) and the official Node.js build.
 PY_RELEASE=20261110
-PY_VERSION=3.12.16
+PY_VERSION=3.13.18
 NODE_VERSION=24.22.3
 case "$tool-$platform" in
-  python-darwin-arm64) triple=aarch64-apple-darwin;      sha256=2f11b8aa3726bdbd87dd9eb76568412faddf4f47e26913fa45d6a2e424972acd ;;
-  python-darwin-x64)   triple=x86_64-apple-darwin;       sha256=b78a4c479f1964ec484880bee567568266f68da102269fb93a05fe8716b45f91 ;;
-  python-linux-x64)    triple=x86_64-unknown-linux-gnu;  sha256=6a9e62dad033790aef722dbd370e0ce76ce17b73627ba3ae679f537049350b39 ;;
-  python-linux-arm64)  triple=aarch64-unknown-linux-gnu; sha256=b6a41defec4975d94b4ff1950236e7383e5c02ba40ea48c9ec33c66087a35aab ;;
+  python-darwin-arm64) triple=aarch64-apple-darwin;      sha256=7a2384641584ab9984221fcb0fc9265df465922af71be71410529e2a9c3f0540 ;;
+  python-darwin-x64)   triple=x86_64-apple-darwin;       sha256=d27d59a722db9f69926eb6d9564071247221f45a04da920ea7f3001c97e32f9b ;;
+  python-linux-x64)    triple=x86_64-unknown-linux-gnu;  sha256=f2d2199eb25880e07863b391cf7124e7ffa1338b0d65600dfcec117c4223a7fb ;;
+  python-linux-arm64)  triple=aarch64-unknown-linux-gnu; sha256=55c00325f7c1fddf325dfc621aabdfbbac4dc54adda224af88ec411dc12db239 ;;
   node-darwin-arm64)   sha256=ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd ;;
   node-darwin-x64)     sha256=977614af0504c81045e7fd85596dbca0e5f951b96681516dadafedcca8c447f7 ;;
   node-linux-x64)      sha256=061ec3e3062115705b56b51fa9cc330ab50d34b6969387d4e4b1a50c6809acc2 ;;

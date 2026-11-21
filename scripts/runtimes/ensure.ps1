@@ -18,13 +18,14 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"   # Invoke-WebRequest is very slow with its progress bar
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.ServicePointManager]::SecurityProtocol
 
-# Portable CPython (https://github.com/astral-sh/python-build-standalone) and the official Node.js build.
+# Python: the official python.org build from NuGet (signed by the Python Software Foundation, so Smart
+# App Control lets it run; it includes venv and ensurepip). Node.js: the official, signed build.
 $pins = @{
     python = @{
-        name   = "python-3.12.16+20261110"
-        url    = "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16%2B20261110-x86_64-pc-windows-msvc-install_only_stripped.tar.gz"
-        sha256 = "355ee61b8207b91574491b1c6dc9b0ebb4408fc56bfafe498f3ef439314b52dc"
-        exe    = "python\python.exe"
+        name   = "python-3.13.17"
+        url    = "https://api.nuget.org/v3-flatcontainer/python/3.13.17/python.3.13.17.nupkg"
+        sha256 = "dce409744b088f94c6e37ba41f8100c384c27e029e843237364c602d30d475e5"
+        exe    = "tools\python.exe"
     }
     node   = @{
         name   = "node-v24.22.3"
@@ -61,7 +62,7 @@ if (-not (Test-Path $exe)) {
         if ($actual -ne $pin.sha256) { throw "checksum mismatch for $($pin.url): $actual" }
         $unpacked = Join-Path $work "unpacked"
         New-Item -ItemType Directory $unpacked | Out-Null
-        # tar.exe ships with Windows 10 1803 and newer and reads .tar.gz as well as .zip.
+        # tar.exe ships with Windows 10 1803 and newer and reads .tar.gz as well as .zip (and .nupkg, a zip).
         & "$env:SystemRoot\System32\tar.exe" -xf $archive -C $unpacked
         if ($LASTEXITCODE -ne 0) { throw "could not unpack $archive" }
         if (-not (Test-Path $exe)) {
